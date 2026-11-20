@@ -2,13 +2,28 @@
  * FoodChoice Frontend Application Logic
  * Communicates with the FastAPI backend to fetch ingredients, accounts,
  * household profiles, and dynamic recipe recommendations with sharing and veto handling.
+ * Integrates Supabase Auth for visitor vs authenticated user account management.
  */
+
+// Supabase Auth Configuration
+const SUPABASE_URL = "https://yazxsprryjbbmhdvoliv.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_W0dQg4JObKBzrlbhrS1W8A_S84hw3Ec";
+let supabaseClient = null;
+
+try {
+    if (window.supabase) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+} catch (e) {
+    console.warn("Supabase SDK initialization notice:", e);
+}
 
 // Global application state
 const state = {
     allIngredients: [],
     allAccounts: [],
-    activeAccountId: 1, // Default: Marion (account 1)
+    activeAccountId: null, // Default: null (Visiteur / Guest mode)
+    currentUser: null,     // Currently authenticated user account object
     currentProfiles: [],
     selectedIngredientIds: new Set(),
     selectedProfileIds: new Set(),
@@ -39,8 +54,9 @@ async function initApp() {
     await checkApiHealth();
     await loadInitialData();
     setupEventListeners();
+    setupAuthListeners();
     setupViewNavigation();
-    updateAccountViewUI();
+    await initAuthSession();
     renderSeasonCalendar();
 }
 
@@ -87,8 +103,12 @@ async function loadInitialData() {
             renderDatalist();
         }
 
-        // Load profiles for initial active account (Marion)
-        await loadHouseholdProfiles(state.activeAccountId);
+        // Load profiles for initial active account (if authenticated)
+        if (state.activeAccountId) {
+            await loadHouseholdProfiles(state.activeAccountId);
+        } else {
+            await loadHouseholdProfiles(null);
+        }
     } catch (error) {
         console.error("Failed to load initial data:", error);
     }
@@ -460,10 +480,15 @@ function updateAccountViewUI() {
     const groupWhoIsDining = document.getElementById("group-who-is-dining");
     const controlsGrid = document.querySelector(".controls-grid");
 
-    if (state.activeAccountId) {
-        // Logged-in user account (e.g. Marion, Lisa, Odile)
-        const currentAcc = state.allAccounts.find(a => a.id === state.activeAccountId);
-        const accName = currentAcc ? currentAcc.display_name : "votre compte";
+    const authVisitor = document.getElementById("auth-state-visitor");
+    const authLogged = document.getElementById("auth-state-logged");
+    const loggedName = document.getElementById("logged-user-name");
+
+    if (state.activeAccountId && state.currentUser) {
+        // Logged-in user account
+        if (authVisitor) authVisitor.style.display = "none";
+        if (authLogged) authLogged.style.display = "flex";
+        if (loggedName) loggedName.textContent = state.currentUser.display_name;
 
         if (tabMyRecipes) tabMyRecipes.innerHTML = "📖 Mes Recettes";
         if (tabCreateRecipe) tabCreateRecipe.style.display = "";
@@ -471,10 +496,13 @@ function updateAccountViewUI() {
         if (groupWhoIsDining) groupWhoIsDining.style.display = "";
         if (controlsGrid) controlsGrid.classList.remove("visitor-mode");
         if (myRecipesSubtitle) {
-            myRecipesSubtitle.textContent = `Toutes les recettes privées et partagées associées au compte de ${accName}.`;
+            myRecipesSubtitle.textContent = `Toutes les recettes privées et partagées associées au compte de ${state.currentUser.display_name}.`;
         }
     } else {
         // Visitor / Guest mode
+        if (authVisitor) authVisitor.style.display = "flex";
+        if (authLogged) authLogged.style.display = "none";
+
         if (tabMyRecipes) tabMyRecipes.innerHTML = "📖 Recettes";
         if (tabCreateRecipe) tabCreateRecipe.style.display = "none";
         if (btnGoCreate) btnGoCreate.style.display = "none";
@@ -487,6 +515,313 @@ function updateAccountViewUI() {
             switchView("view-search");
         }
     }
+}
+
+/**
+ * Initialize and restore active Supabase Auth session on app launch.
+ */
+async function initAuthSession() {
+    if (!supabaseClient) {
+        updateAccountViewUI();
+        return;
+    }
+
+    try {
+        const { data } = await supabaseClient.auth.getSession();
+        const session = data ? data.session : null;
+        if (session && session.user) {
+            await syncAndActivateUser(session.user);
+        } else {
+            state.activeAccountId = null;
+            state.currentUser = null;
+            updateAccountViewUI();
+            await loadHouseholdProfiles(null);
+        }
+
+        // Listen for auth state changes (e.g. login/logout in other tabs or token refresh)
+        supabaseClient.auth.onAuthStateChange(async (event, currentSession) => {
+            if (event === "SIGNED_IN" && currentSession && currentSession.user) {
+                if (state.currentUser?.supabase_uid !== currentSession.user.id) {
+                    await syncAndActivateUser(currentSession.user);
+                }
+            } else if (event === "SIGNED_OUT") {
+                state.activeAccountId = null;
+                state.currentUser = null;
+                updateAccountViewUI();
+                await loadHouseholdProfiles(null);
+                if (state.currentView === "view-my-recipes") {
+                    loadAccountRecipes();
+                } else if (state.currentView === "view-create-recipe") {
+                    switchView("view-search");
+                } else {
+                    triggerSearch();
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Failed to restore Supabase auth session:", err);
+        state.activeAccountId = null;
+        state.currentUser = null;
+        updateAccountViewUI();
+    }
+}
+
+/**
+ * Synchronize authenticated Supabase user profile with the backend database.
+ */
+async function syncAndActivateUser(supabaseUser) {
+    if (!supabaseUser) return;
+    try {
+        const payload = {
+            supabase_uid: supabaseUser.id,
+            email: supabaseUser.email,
+            display_name: supabaseUser.user_metadata?.display_name || supabaseUser.email.split("@")[0]
+        };
+
+        const res = await fetch("/api/auth/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const acc = await res.json();
+            state.activeAccountId = acc.id;
+            state.currentUser = acc;
+
+            // Refresh allAccounts list
+            const accRes = await fetch("/api/accounts");
+            if (accRes.ok) {
+                state.allAccounts = await accRes.json();
+            }
+
+            updateAccountViewUI();
+            await loadHouseholdProfiles(acc.id);
+            await loadAccountNotifications();
+
+            if (state.currentView === "view-my-recipes") {
+                loadAccountRecipes();
+            } else {
+                triggerSearch();
+            }
+        } else {
+            console.error("Failed to sync Supabase user with backend:", await res.text());
+        }
+    } catch (err) {
+        console.error("Error syncing Supabase user with backend:", err);
+    }
+}
+
+/**
+ * Setup Supabase authentication modal and user interaction listeners.
+ */
+function setupAuthListeners() {
+    const modal = document.getElementById("auth-modal");
+    const btnOpenLogin = document.getElementById("btn-open-login");
+    const btnOpenRegister = document.getElementById("btn-open-register");
+    const btnCloseModal = document.getElementById("btn-close-auth-modal");
+    const tabSwitchLogin = document.getElementById("tab-switch-login");
+    const tabSwitchRegister = document.getElementById("tab-switch-register");
+    const formLogin = document.getElementById("form-login");
+    const formRegister = document.getElementById("form-register");
+    const loginError = document.getElementById("login-error-msg");
+    const registerError = document.getElementById("register-error-msg");
+    const btnLogout = document.getElementById("btn-logout");
+
+    function openModal(mode = "login") {
+        if (!modal) return;
+        modal.style.display = "flex";
+        if (loginError) loginError.style.display = "none";
+        if (registerError) registerError.style.display = "none";
+
+        if (mode === "login") {
+            tabSwitchLogin?.classList.add("active");
+            tabSwitchRegister?.classList.remove("active");
+            if (formLogin) formLogin.style.display = "flex";
+            if (formRegister) formRegister.style.display = "none";
+        } else {
+            tabSwitchRegister?.classList.add("active");
+            tabSwitchLogin?.classList.remove("active");
+            if (formRegister) formRegister.style.display = "flex";
+            if (formLogin) formLogin.style.display = "none";
+        }
+    }
+
+    function closeModal() {
+        if (modal) modal.style.display = "none";
+    }
+
+    btnOpenLogin?.addEventListener("click", () => openModal("login"));
+    btnOpenRegister?.addEventListener("click", () => openModal("register"));
+    btnCloseModal?.addEventListener("click", closeModal);
+
+    modal?.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    tabSwitchLogin?.addEventListener("click", () => openModal("login"));
+    tabSwitchRegister?.addEventListener("click", () => openModal("register"));
+
+    // Login form submission
+    formLogin?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("login-email")?.value.trim();
+        const password = document.getElementById("login-password")?.value;
+        const btnSubmit = document.getElementById("btn-submit-login");
+
+        if (!email || !password) return;
+        if (!supabaseClient) {
+            if (loginError) {
+                loginError.textContent = "Le service d'authentification Supabase n'est pas disponible.";
+                loginError.style.display = "block";
+            }
+            return;
+        }
+
+        try {
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = "Connexion en cours...";
+            }
+            if (loginError) loginError.style.display = "none";
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) {
+                let msg = error.message;
+                if (msg.includes("Invalid login credentials")) {
+                    msg = "Adresse email ou mot de passe incorrect.";
+                } else if (msg.includes("Email not confirmed")) {
+                    msg = "Votre adresse email n'a pas encore été confirmée. Veuillez vérifier votre boîte mail ou désactiver la confirmation dans Supabase.";
+                }
+                if (loginError) {
+                    loginError.textContent = msg;
+                    loginError.style.display = "block";
+                }
+                return;
+            }
+
+            if (data?.user) {
+                await syncAndActivateUser(data.user);
+                closeModal();
+                showToast(`Bienvenue ${state.currentUser?.display_name || ''} !`);
+            }
+        } catch (err) {
+            console.error("Login submission error:", err);
+            if (loginError) {
+                loginError.textContent = "Une erreur est survenue lors de la connexion.";
+                loginError.style.display = "block";
+            }
+        } finally {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = "Se connecter";
+            }
+        }
+    });
+
+    // Registration form submission
+    formRegister?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("register-name")?.value.trim();
+        const email = document.getElementById("register-email")?.value.trim();
+        const password = document.getElementById("register-password")?.value;
+        const btnSubmit = document.getElementById("btn-submit-register");
+
+        if (!name || !email || !password) return;
+        if (!supabaseClient) {
+            if (registerError) {
+                registerError.textContent = "Le service d'authentification Supabase n'est pas disponible.";
+                registerError.style.display = "block";
+            }
+            return;
+        }
+
+        try {
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = "Création du compte...";
+            }
+            if (registerError) registerError.style.display = "none";
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { display_name: name }
+                }
+            });
+
+            if (error) {
+                let msg = error.message;
+                if (msg.includes("already registered")) {
+                    msg = "Un compte existe déjà avec cette adresse email.";
+                } else if (msg.includes("Password should be")) {
+                    msg = "Le mot de passe doit comporter au moins 6 caractères.";
+                }
+                if (registerError) {
+                    registerError.textContent = msg;
+                    registerError.style.display = "block";
+                }
+                return;
+            }
+
+            if (data?.session && data?.user) {
+                // Auto logged-in
+                await syncAndActivateUser(data.user);
+                closeModal();
+                showToast(`Compte créé avec succès ! Bienvenue ${name}.`);
+            } else if (data?.user) {
+                if (registerError) {
+                    registerError.className = "auth-error-alert";
+                    registerError.style.backgroundColor = "#ecfdf5";
+                    registerError.style.color = "#065f46";
+                    registerError.style.borderColor = "#a7f3d0";
+                    registerError.textContent = "Compte créé avec succès ! Vous pouvez maintenant vous connecter.";
+                    registerError.style.display = "block";
+                }
+                setTimeout(() => openModal("login"), 1500);
+            }
+        } catch (err) {
+            console.error("Registration submission error:", err);
+            if (registerError) {
+                registerError.textContent = "Une erreur est survenue lors de l'inscription.";
+                registerError.style.display = "block";
+            }
+        } finally {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = "Créer mon compte";
+            }
+        }
+    });
+
+    // Logout button
+    btnLogout?.addEventListener("click", async () => {
+        try {
+            if (supabaseClient) {
+                await supabaseClient.auth.signOut();
+            }
+            state.activeAccountId = null;
+            state.currentUser = null;
+            updateAccountViewUI();
+            await loadHouseholdProfiles(null);
+            showToast("Vous avez été déconnecté.");
+
+            if (state.currentView === "view-my-recipes") {
+                loadAccountRecipes();
+            } else if (state.currentView === "view-create-recipe") {
+                switchView("view-search");
+            } else {
+                triggerSearch();
+            }
+        } catch (err) {
+            console.error("Logout failed:", err);
+        }
+    });
 }
 
 /**

@@ -35,10 +35,68 @@ from backend.app.schemas.recipe import (
     RecipeNotificationOut,
     NotificationResponse,
     RecipeIngredientCreate,
+    AuthSyncRequest,
 )
 from backend.app.services.recommendation import search_and_rank_recipes
 
 router = APIRouter(prefix="/api", tags=["Recipes & Accounts"])
+
+
+@router.post("/auth/sync", response_model=UserAccountOut)
+def sync_supabase_user(payload: AuthSyncRequest, db: Session = Depends(get_db)):
+    """
+    Synchronize an authenticated Supabase user with the application database.
+    Links existing accounts by email if matching, or creates a new account.
+    """
+    clean_email = payload.email.strip().lower()
+    clean_uid = payload.supabase_uid.strip()
+
+    # 1. Match by supabase_uid or email
+    account = db.query(UserAccount).filter(
+        (UserAccount.supabase_uid == clean_uid) | (func.lower(UserAccount.email) == clean_email)
+    ).first()
+
+    if account:
+        if not account.supabase_uid:
+            account.supabase_uid = clean_uid
+        if not account.email:
+            account.email = clean_email
+        if payload.display_name and (not account.display_name or account.display_name == account.username):
+            account.display_name = payload.display_name.strip()
+        db.commit()
+        db.refresh(account)
+        return account
+
+    # 2. Create new account
+    base_username = clean_email.split("@")[0].replace(".", "_")
+    candidate_username = base_username
+    counter = 1
+    while db.query(UserAccount).filter_by(username=candidate_username).first():
+        candidate_username = f"{base_username}_{counter}"
+        counter += 1
+
+    display_name = (
+        payload.display_name.strip()
+        if (payload.display_name and payload.display_name.strip())
+        else candidate_username.replace("_", " ").title()
+    )
+
+    new_account = UserAccount(
+        username=candidate_username,
+        display_name=display_name,
+        email=clean_email,
+        supabase_uid=clean_uid,
+    )
+    db.add(new_account)
+    db.flush()
+
+    # Automatically create their own household dining profile
+    default_profile = HouseholdProfile(account_id=new_account.id, name=new_account.display_name)
+    db.add(default_profile)
+
+    db.commit()
+    db.refresh(new_account)
+    return new_account
 
 
 @router.get("/accounts", response_model=list[UserAccountOut])

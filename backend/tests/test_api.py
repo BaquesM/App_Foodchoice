@@ -903,3 +903,50 @@ def test_shared_recipe_update_notification_and_response():
     db.commit()
     db.close()
 
+
+def test_sync_supabase_user():
+    """Ensure Supabase user sync links existing accounts and creates new ones with default profiles."""
+    db = SessionLocal()
+
+    # 1. Sync existing Marion test account
+    sync_res = client.post("/api/auth/sync", json={
+        "supabase_uid": "sup-uid-marion-12345",
+        "email": "marion@test.fr",
+        "display_name": "Marion"
+    })
+    assert sync_res.status_code == 200
+    m_data = sync_res.json()
+    assert m_data["email"] == "marion@test.fr"
+    assert m_data["username"] == "marion"
+
+    # Verify UID was stored
+    acc_db = db.query(UserAccount).filter_by(id=m_data["id"]).first()
+    assert acc_db.supabase_uid == "sup-uid-marion-12345"
+
+    # 2. Sync brand new user
+    new_email = "new_visitor_test@foodchoice.fr"
+    db.query(UserAccount).filter_by(email=new_email).delete()
+    db.commit()
+
+    sync_new = client.post("/api/auth/sync", json={
+        "supabase_uid": "sup-uid-new-user-9999",
+        "email": new_email,
+        "display_name": "Nouveau Visiteur"
+    })
+    assert sync_new.status_code == 200
+    new_data = sync_new.json()
+    assert new_data["display_name"] == "Nouveau Visiteur"
+    assert new_data["email"] == new_email
+
+    # Verify a default dining profile was automatically created
+    prof = db.query(HouseholdProfile).filter_by(account_id=new_data["id"]).first()
+    assert prof is not None
+    assert prof.name == "Nouveau Visiteur"
+
+    # Cleanup
+    db.query(HouseholdProfile).filter_by(account_id=new_data["id"]).delete()
+    db.query(UserAccount).filter_by(id=new_data["id"]).delete()
+    db.commit()
+    db.close()
+
+

@@ -20,6 +20,14 @@ class UserAccountOut(BaseModel):
     id: int
     username: str
     display_name: str
+    email: Optional[str] = None
+
+
+class AuthSyncRequest(BaseModel):
+    """Payload to synchronize an authenticated Supabase user with backend UserAccount."""
+    supabase_uid: str
+    email: str
+    display_name: Optional[str] = None
 
 
 class HouseholdProfileCreate(BaseModel):

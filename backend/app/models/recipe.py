@@ -22,6 +22,8 @@ class UserAccount(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
     display_name = Column(String(100), nullable=False)
+    email = Column(String(150), unique=True, index=True, nullable=True)
+    supabase_uid = Column(String(100), unique=True, index=True, nullable=True)
 
     # Relationships
     household_profiles = relationship("HouseholdProfile", back_populates="account", cascade="all, delete-orphan")

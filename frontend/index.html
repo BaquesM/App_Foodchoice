@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FoodChoice - Vos recettes intelligentes</title>
     <!-- Native CSS stylesheet -->
-    <link rel="stylesheet" href="/static/style.css?v=13">
+    <link rel="stylesheet" href="/static/style.css?v=14">
+    <!-- Supabase JavaScript SDK for Authentication -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -27,17 +29,20 @@
         </div>
     </header>
 
-    <!-- Account switch & tab navigation bar -->
+    <!-- Account authentication & tab navigation bar -->
     <section class="account-bar">
         <div class="account-bar-container">
-            <div class="account-select-group">
-                <label for="account-select" class="account-label">👤 Compte :</label>
-                <select id="account-select" class="account-dropdown">
-                    <option value="1">Marion (Connectée)</option>
-                    <option value="2">Lisa (Connectée)</option>
-                    <option value="3">Odile (Connectée)</option>
-                    <option value="">👤 Visiteur (Sans compte)</option>
-                </select>
+            <!-- Dynamic Authentication State: Visitor vs Logged-in user -->
+            <div class="auth-user-bar" id="auth-user-bar">
+                <div id="auth-state-visitor" class="auth-state-block">
+                    <span class="visitor-badge">👤 Visiteur</span>
+                    <button type="button" id="btn-open-login" class="btn-auth btn-auth-primary">Se connecter</button>
+                    <button type="button" id="btn-open-register" class="btn-auth btn-auth-secondary">Créer un compte</button>
+                </div>
+                <div id="auth-state-logged" class="auth-state-block" style="display: none;">
+                    <span class="user-welcome-label">👤 Bonjour <strong id="logged-user-name">...</strong></span>
+                    <button type="button" id="btn-logout" class="btn-auth btn-auth-logout">Déconnexion</button>
+                </div>
             </div>
 
             <!-- Main view navigation tabs -->
@@ -46,9 +51,9 @@
                     🔍 Trouver une recette
                 </button>
                 <button type="button" class="tab-btn" data-view="view-my-recipes" id="tab-my-recipes">
-                    📖 Mes Recettes
+                    📖 Recettes
                 </button>
-                <button type="button" class="tab-btn" data-view="view-create-recipe" id="tab-create-recipe">
+                <button type="button" class="tab-btn" data-view="view-create-recipe" id="tab-create-recipe" style="display: none;">
                     ➕ Créer une recette
                 </button>
                 <button type="button" class="tab-btn" data-view="view-season-calendar" id="tab-season-calendar">
@@ -407,6 +412,53 @@
         </div>
     </div>
 
+    <!-- Modal Authentification Supabase (Connexion / Inscription) -->
+    <div id="auth-modal" class="auth-modal-backdrop" style="display: none;">
+        <div class="auth-modal-card">
+            <div class="auth-modal-header">
+                <div class="auth-tabs">
+                    <button type="button" class="auth-tab-btn active" id="tab-switch-login">Se connecter</button>
+                    <button type="button" class="auth-tab-btn" id="tab-switch-register">Créer un compte</button>
+                </div>
+                <button type="button" class="btn-close-modal" id="btn-close-auth-modal">✕</button>
+            </div>
+
+            <!-- Onglet Connexion -->
+            <form id="form-login" class="auth-form">
+                <p class="auth-form-description">Accédez à vos recettes personnelles et à vos convives.</p>
+                <div class="form-group">
+                    <label class="form-label" for="login-email">Adresse email</label>
+                    <input type="email" id="login-email" class="form-input" required placeholder="nom@exemple.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" class="form-input" required placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <div id="login-error-msg" class="auth-error-alert" style="display: none;"></div>
+                <button type="submit" id="btn-submit-login" class="btn-primary btn-block">Se connecter</button>
+            </form>
+
+            <!-- Onglet Inscription -->
+            <form id="form-register" class="auth-form" style="display: none;">
+                <p class="auth-form-description">Créez votre compte FoodChoice en quelques secondes.</p>
+                <div class="form-group">
+                    <label class="form-label" for="register-name">Nom ou prénom d'affichage *</label>
+                    <input type="text" id="register-name" class="form-input" required placeholder="Ex: Marion" minlength="2">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-email">Adresse email *</label>
+                    <input type="email" id="register-email" class="form-input" required placeholder="nom@exemple.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-password">Mot de passe *</label>
+                    <input type="password" id="register-password" class="form-input" required placeholder="Au moins 6 caractères" minlength="6" autocomplete="new-password">
+                </div>
+                <div id="register-error-msg" class="auth-error-alert" style="display: none;"></div>
+                <button type="submit" id="btn-submit-register" class="btn-primary btn-block">Créer mon compte</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast notification for link copy or feedback -->
     <div id="toast" class="toast" style="display: none;"></div>
 
@@ -416,7 +468,7 @@
     </footer>
 
     <!-- Main JavaScript application logic -->
-    <script src="/static/app.js?v=12"></script>
+    <script src="/static/app.js?v=13"></script>
 </body>
 
 </html>

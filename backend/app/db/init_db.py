@@ -24,36 +24,57 @@ def init_db(reset: bool = False):
     # Create tables in SQLite or PostgreSQL
     Base.metadata.create_all(bind=engine)
 
-    # Ensure columns exist in tables if SQLite database was created previously
-    if engine.name == "sqlite":
-        try:
-            with engine.connect() as conn:
+    # Ensure columns exist in tables if database was created previously
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            if engine.name == "sqlite":
                 raw_conn = conn.connection
                 cursor = raw_conn.cursor()
                 cursor.execute("PRAGMA table_info(ingredients)")
                 cols = [r[1] for r in cursor.fetchall()]
                 if cols and "needs_season_review" not in cols:
                     cursor.execute("ALTER TABLE ingredients ADD COLUMN needs_season_review BOOLEAN DEFAULT 0")
-                    raw_conn.commit()
 
                 cursor.execute("PRAGMA table_info(recipes)")
                 cols_recipes = [r[1] for r in cursor.fetchall()]
                 if cols_recipes and "parent_recipe_id" not in cols_recipes:
                     cursor.execute("ALTER TABLE recipes ADD COLUMN parent_recipe_id INTEGER REFERENCES recipes(id)")
-                    raw_conn.commit()
-        except Exception as e:
-            print(f"Migration check notice: {e}")
+
+                cursor.execute("PRAGMA table_info(user_accounts)")
+                cols_users = [r[1] for r in cursor.fetchall()]
+                if cols_users and "email" not in cols_users:
+                    cursor.execute("ALTER TABLE user_accounts ADD COLUMN email VARCHAR(150)")
+                if cols_users and "supabase_uid" not in cols_users:
+                    cursor.execute("ALTER TABLE user_accounts ADD COLUMN supabase_uid VARCHAR(100)")
+                raw_conn.commit()
+            else:
+                conn.execute(text("ALTER TABLE user_accounts ADD COLUMN IF NOT EXISTS email VARCHAR(150)"))
+                conn.execute(text("ALTER TABLE user_accounts ADD COLUMN IF NOT EXISTS supabase_uid VARCHAR(100)"))
+                conn.commit()
+    except Exception as e:
+        print(f"Migration check notice: {e}")
 
     db = SessionLocal()
     try:
-        # If accounts already exist, do not re-seed unless reset was requested
+        # If accounts already exist, ensure default test emails are populated and return
         if not reset and db.query(UserAccount).first():
+            m = db.query(UserAccount).filter_by(username="marion").first()
+            if m and not m.email:
+                m.email = "marion@test.fr"
+            l = db.query(UserAccount).filter_by(username="lisa").first()
+            if l and not l.email:
+                l.email = "lisa@test.fr"
+            o = db.query(UserAccount).filter_by(username="odile").first()
+            if o and not o.email:
+                o.email = "odile@test.fr"
+            db.commit()
             return
 
         # 1. Accounts
-        acc_marion = UserAccount(username="marion", display_name="Marion")
-        acc_lisa = UserAccount(username="lisa", display_name="Lisa")
-        acc_odile = UserAccount(username="odile", display_name="Odile")
+        acc_marion = UserAccount(username="marion", display_name="Marion", email="marion@test.fr")
+        acc_lisa = UserAccount(username="lisa", display_name="Lisa", email="lisa@test.fr")
+        acc_odile = UserAccount(username="odile", display_name="Odile", email="odile@test.fr")
         db.add_all([acc_marion, acc_lisa, acc_odile])
         db.flush()
 

@@ -70,14 +70,18 @@ async function checkApiHealth() {
         const response = await fetch("/api/health");
         if (response.ok) {
             const data = await response.json();
-            statusCard.className = "badge badge-success";
-            statusCard.innerHTML = `<span class="badge-dot"></span><span>API v${data.version}</span>`;
+            if (statusCard) {
+                statusCard.className = "badge badge-success";
+                statusCard.innerHTML = `<span class="badge-dot"></span><span>API v${data.version}</span>`;
+            }
         } else {
             throw new Error(`HTTP ${response.status}`);
         }
     } catch (error) {
-        statusCard.className = "badge badge-error";
-        statusCard.innerHTML = `<span class="badge-dot"></span><span>API Hors ligne</span>`;
+        if (statusCard) {
+            statusCard.className = "badge badge-error";
+            statusCard.innerHTML = `<span class="badge-dot"></span><span>API Hors ligne</span>`;
+        }
         console.error("API health check failed:", error);
     }
 }

@@ -175,6 +175,54 @@ body {
     background-color: #fef2f2;
 }
 
+/* Header Auth Buttons (inside teal app-header) */
+.header-user-label {
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.header-user-label strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.btn-auth-header-login {
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.btn-auth-header-login:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-color: #ffffff;
+}
+
+.btn-auth-header-register {
+    background-color: #ffffff;
+    color: var(--primary-color);
+    border: 1px solid #ffffff;
+    font-weight: 700;
+}
+
+.btn-auth-header-register:hover {
+    background-color: #f0fdfa;
+    color: var(--primary-hover);
+}
+
+.btn-auth-header-logout {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    padding: 0.3rem 0.65rem;
+}
+
+.btn-auth-header-logout:hover {
+    background-color: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
 /* Auth Modal Styles */
 .auth-modal-backdrop {
     position: fixed;

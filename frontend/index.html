@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FoodChoice - Vos recettes intelligentes</title>
     <!-- Native CSS stylesheet -->
-    <link rel="stylesheet" href="/static/style.css?v=15">
+    <link rel="stylesheet" href="/static/style.css?v=16">
     <!-- Supabase JavaScript SDK for Authentication -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -19,25 +19,23 @@
             <h1 class="app-title">
                 🍳 <span>FoodChoice</span>
             </h1>
-        </div>
-    </header>
-
-    <!-- Account authentication & tab navigation bar -->
-    <section class="account-bar">
-        <div class="account-bar-container">
             <!-- Dynamic Authentication State: Visitor vs Logged-in user -->
             <div class="auth-user-bar" id="auth-user-bar">
                 <div id="auth-state-visitor" class="auth-state-block">
-                    <span class="visitor-badge">👤 Visiteur</span>
-                    <button type="button" id="btn-open-login" class="btn-auth btn-auth-primary">Se connecter</button>
-                    <button type="button" id="btn-open-register" class="btn-auth btn-auth-secondary">Créer un compte</button>
+                    <button type="button" id="btn-open-login" class="btn-auth btn-auth-header-login">Se connecter</button>
+                    <button type="button" id="btn-open-register" class="btn-auth btn-auth-header-register">Créer un compte</button>
                 </div>
                 <div id="auth-state-logged" class="auth-state-block" style="display: none;">
-                    <span class="user-welcome-label">👤 Bonjour <strong id="logged-user-name">...</strong></span>
-                    <button type="button" id="btn-logout" class="btn-auth btn-auth-logout">Déconnexion</button>
+                    <span class="user-welcome-label header-user-label">👤 Bonjour <strong id="logged-user-name">...</strong></span>
+                    <button type="button" id="btn-logout" class="btn-auth btn-auth-header-logout">Déconnexion</button>
                 </div>
             </div>
+        </div>
+    </header>
 
+    <!-- Navigation tabs bar -->
+    <section class="account-bar">
+        <div class="account-bar-container">
             <!-- Main view navigation tabs -->
             <nav class="nav-tabs">
                 <button type="button" class="tab-btn active" data-view="view-search">
@@ -461,7 +459,7 @@
     </footer>
 
     <!-- Main JavaScript application logic -->
-    <script src="/static/app.js?v=14"></script>
+    <script src="/static/app.js?v=15"></script>
 </body>
 
 </html>

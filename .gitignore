@@ -1,0 +1,26 @@
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+env/
+
+# Fichiers compilés et cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Données locales et secrets
+*.sqlite3
+*.db
+.env
+.env.local
+
+# IDEs & OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

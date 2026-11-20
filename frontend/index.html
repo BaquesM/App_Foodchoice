@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodChoice - Vos recettes intelligentes</title>
+    <!-- Native CSS stylesheet -->
+    <link rel="stylesheet" href="/static/style.css?v=13">
+</head>
+
+<body>
+
+    <!-- Header navigation bar -->
+    <header class="app-header">
+        <div class="header-container">
+            <h1 class="app-title">
+                🍳 <span>FoodChoice</span>
+            </h1>
+            <div class="header-actions">
+                <span id="status-card" class="badge badge-warning">
+                    <span class="badge-dot"></span>
+                    <span id="status-text">Connexion...</span>
+                </span>
+                <a href="/docs" target="_blank" class="docs-link">API Docs</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Account switch & tab navigation bar -->
+    <section class="account-bar">
+        <div class="account-bar-container">
+            <div class="account-select-group">
+                <label for="account-select" class="account-label">👤 Compte :</label>
+                <select id="account-select" class="account-dropdown">
+                    <option value="1">Marion (Connectée)</option>
+                    <option value="2">Lisa (Connectée)</option>
+                    <option value="3">Odile (Connectée)</option>
+                    <option value="">👤 Visiteur (Sans compte)</option>
+                </select>
+            </div>
+
+            <!-- Main view navigation tabs -->
+            <nav class="nav-tabs">
+                <button type="button" class="tab-btn active" data-view="view-search">
+                    🔍 Trouver une recette
+                </button>
+                <button type="button" class="tab-btn" data-view="view-my-recipes" id="tab-my-recipes">
+                    📖 Mes Recettes
+                </button>
+                <button type="button" class="tab-btn" data-view="view-create-recipe" id="tab-create-recipe">
+                    ➕ Créer une recette
+                </button>
+                <button type="button" class="tab-btn" data-view="view-season-calendar" id="tab-season-calendar">
+                    📅 Calendrier saison-ingrédient
+                </button>
+            </nav>
+        </div>
+    </section>
+
+    <!-- Main application content -->
+    <main class="main-content">
+
+        <!-- ========================================== -->
+        <!-- VIEW 1: SEARCH BY INGREDIENTS & CRITERIA   -->
+        <!-- ========================================== -->
+        <div id="view-search" class="app-view active">
+
+            <!-- Controls section: Dining guests, servings, and public toggle -->
+            <section class="card controls-card">
+                <div class="controls-grid">
+                    <!-- Dining user profiles selection -->
+                    <div class="control-group" id="group-who-is-dining">
+                        <label class="control-label">👥 Qui est à table dans votre foyer ?</label>
+                        <div id="profiles-selector" class="chip-container">
+                            <span class="loading-text">Chargement des profils...</span>
+                        </div>
+                    </div>
+
+                    <!-- Servings & Public toggle -->
+                    <div class="control-group controls-right-col">
+                        <div>
+                            <label for="servings-input" class="control-label">🍽️ Nombre de personnes</label>
+                            <div class="servings-stepper">
+                                <button type="button" class="btn-stepper" id="btn-servings-minus">−</button>
+                                <input type="number" id="servings-input" value="2" min="1" max="20"
+                                    class="servings-field" />
+                                <button type="button" class="btn-stepper" id="btn-servings-plus">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Include public recipes toggle -->
+                        <div class="public-toggle-container">
+                            <label class="checkbox-label" for="toggle-include-public">
+                                <input type="checkbox" id="toggle-include-public" checked />
+                                <span>🌐 Inclure les recettes publiques</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pantry / Ingredients selection section -->
+            <section class="card">
+                <div class="card-header-row">
+                    <div>
+                        <h2>Qu'avez-vous dans votre cuisine ?</h2>
+                        <p>Cliquez sur vos ingrédients disponibles pour trouver les meilleures recettes.</p>
+                    </div>
+                    <button type="button" id="btn-clear-selection" class="btn-secondary btn-sm">Tout
+                        désélectionner</button>
+                </div>
+
+                <!-- Quick filter input -->
+                <div class="search-bar">
+                    <input type="text" id="ingredient-filter" placeholder="Filtrer un ingrédient (ex: oeuf, tomate...)"
+                        class="search-input" />
+                </div>
+
+                <!-- Ingredients grouped by category -->
+                <div id="ingredients-container" class="ingredients-accordion">
+                    <div class="loading-state">Chargement des ingrédients...</div>
+                </div>
+            </section>
+
+            <!-- Results section: Ranked recipe cards -->
+            <section class="results-section">
+                <div class="results-header">
+                    <h3>Recettes compatibles (<span id="results-count">0</span>)</h3>
+                    <span id="selected-summary" class="text-muted text-sm">0 ingrédient(s) sélectionné(s)</span>
+                </div>
+
+                <div id="recipes-list" class="recipe-cards-container">
+                    <div class="empty-state">
+                        Sélectionnez vos ingrédients ci-dessus pour découvrir vos recettes.
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 2: MY ACCOUNT RECIPES (LISTING)       -->
+        <!-- ========================================== -->
+        <div id="view-my-recipes" class="app-view" style="display: none;">
+            <div class="view-header-row">
+                <div>
+                    <h2>Carnet de recettes</h2>
+                    <p id="my-recipes-subtitle">Toutes les recettes privées et partagées associées à votre compte.</p>
+                </div>
+                <button type="button" id="btn-go-to-create" class="btn-primary">
+                    ➕ Créer une nouvelle recette
+                </button>
+            </div>
+
+            <!-- Notifications banner for modified shared recipes -->
+            <div id="shared-recipe-notifications" class="shared-notifications-container" style="display: none;"></div>
+
+            <!-- List of recipes for this account -->
+            <div id="my-recipes-list" class="recipe-cards-container">
+                <div class="loading-state">Chargement de vos recettes...</div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 3: ISOLATED RECIPE CREATION FORM      -->
+        <!-- ========================================== -->
+        <div id="view-create-recipe" class="app-view" style="display: none;">
+            <div class="view-header-row">
+                <div>
+                    <h2 id="create-recipe-view-title">Créer une nouvelle recette</h2>
+                    <p id="create-recipe-view-desc">Remplissez les informations ci-dessous pour ajouter une recette à votre carnet personnel.</p>
+                </div>
+                <button type="button" id="btn-cancel-create" class="btn-secondary btn-sm">← Revenir au carnet</button>
+            </div>
+
+            <section class="card create-recipe-card">
+                <form id="create-recipe-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="new-recipe-title">Titre de la recette *</label>
+                            <input type="text" id="new-recipe-title" class="form-input"
+                                placeholder="Ex: Tarte aux courgettes" required />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="new-recipe-visibility">Visibilité de départ *</label>
+                            <select id="new-recipe-visibility" class="form-input">
+                                <option value="private">🔒 Privée (visible uniquement par vous)</option>
+                                <option value="public">🌐 Publique (partagée avec toute la communauté)</option>
+                            </select>
+                        </div>
+
+                        <!-- Option Recette alternative -->
+                        <div class="form-group alternative-recipe-group">
+                            <label class="toggle-checkbox-label" for="new-recipe-is-alternative" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
+                                <input type="checkbox" id="new-recipe-is-alternative" />
+                                <span>🔄 Recette alternative</span>
+                            </label>
+                            <div id="alternative-recipe-select-box" style="display: none; margin-top: 0.6rem;">
+                                <label class="form-label" for="new-recipe-parent-id">Recette originale de référence *</label>
+                                <select id="new-recipe-parent-id" class="form-input">
+                                    <option value="">-- Sélectionner la recette originale --</option>
+                                </select>
+                                <p class="helper-text" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.35rem;">
+                                    Cette recette sera enregistrée comme une variante alternative de la recette originale sélectionnée.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label" for="new-recipe-prep">Préparation (min)</label>
+                                <input type="number" id="new-recipe-prep" class="form-input" value="15" min="0" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="new-recipe-cook">Cuisson (min)</label>
+                                <input type="number" id="new-recipe-cook" class="form-input" value="20" min="0" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="new-recipe-servings">Portions de base</label>
+                                <input type="number" id="new-recipe-servings" class="form-input" value="4" min="1" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic ingredients list -->
+                    <div class="form-group">
+                        <label class="form-label">Ingrédients nécessaires *</label>
+                        <div id="new-recipe-ingredients-list" class="new-ingredients-container">
+                            <!-- Injected dynamically -->
+                        </div>
+                        <button type="button" id="btn-add-ingredient-row" class="btn-secondary btn-sm"
+                            style="margin-top: 0.5rem; align-self: flex-start;">
+                            + Ajouter un ingrédient
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Instructions de préparation (par étapes) *</label>
+                        <div id="new-recipe-steps-list" class="new-steps-container">
+                            <!-- Injected dynamically: Step 1, Step 2... -->
+                        </div>
+                        <button type="button" id="btn-add-step-row" class="btn-secondary btn-sm"
+                            style="margin-top: 0.5rem; align-self: flex-start;">
+                            + Ajouter une étape
+                        </button>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="btn-cancel-create-secondary" class="btn-secondary"
+                            style="margin-right: 0.5rem;">Annuler</button>
+                        <button type="submit" id="btn-submit-recipe" class="btn-primary">Enregistrer la recette</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 4: RECIPE DETAIL PAGE                 -->
+        <!-- ========================================== -->
+        <div id="view-recipe-detail" class="app-view" style="display: none;">
+            <div class="view-header-row">
+                <button type="button" id="btn-back-from-detail" class="btn-secondary btn-sm">
+                    ← Revenir à la liste des recettes
+                </button>
+            </div>
+
+            <article id="recipe-detail-container" class="recipe-detail-card card">
+                <!-- Dynamically populated by app.js -->
+            </article>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 5: SEASON INGREDIENT CALENDAR         -->
+        <!-- ========================================== -->
+        <div id="view-season-calendar" class="app-view" style="display: none;">
+            <div class="view-header-row">
+                <div>
+                    <h2>📅 Calendrier saison-ingrédient</h2>
+                    <p>Périodes de récolte et de pleine saison de tous les ingrédients, actualisées en temps réel.</p>
+                </div>
+                <div class="calendar-current-info" id="calendar-current-info">
+                    <!-- e.g. Mois actuel : Novembre -->
+                </div>
+            </div>
+
+            <section class="card calendar-controls-card">
+                <div class="calendar-filters-row calendar-filters-same-level">
+                    <div class="calendar-filter-group">
+                        <label class="form-label" for="calendar-search">Rechercher</label>
+                        <input type="text" id="calendar-search" class="form-input"
+                            placeholder="🔍 Ex: Courgette, Tomate, Pomme..." />
+                    </div>
+
+                    <div class="calendar-filter-group">
+                        <label class="form-label" for="calendar-category-filter">Famille d'ingrédient</label>
+                        <select id="calendar-category-filter" class="form-input">
+                            <option value="all">Toutes les familles</option>
+                            <option value="légume">🥦 Légumes</option>
+                            <option value="fruit">🍎 Fruits</option>
+                            <option value="protéine">🥚 Protéines</option>
+                            <option value="viande">🥩 Viandes</option>
+                            <option value="poisson">🐟 Poissons</option>
+                            <option value="féculent">🍝 Féculents</option>
+                            <option value="produit laitier">🧀 Produits laitiers</option>
+                            <option value="matière grasse">🧈 Matières grasses</option>
+                            <option value="herbe/épice">🌿 Herbes & Épices</option>
+                            <option value="autre">📦 Autres</option>
+                        </select>
+                    </div>
+
+                    <div class="calendar-filter-group">
+                        <label class="form-label" for="calendar-month-select">Mois de l'année</label>
+                        <select id="calendar-month-select" class="form-input">
+                            <option value="all">Tous les mois (12)</option>
+                            <option value="1">1 - Janvier ❄️</option>
+                            <option value="2">2 - Février ❄️</option>
+                            <option value="3">3 - Mars 🌸</option>
+                            <option value="4">4 - Avril 🌸</option>
+                            <option value="5">5 - Mai 🌸</option>
+                            <option value="6">6 - Juin ☀️</option>
+                            <option value="7">7 - Juillet ☀️</option>
+                            <option value="8">8 - Août ☀️</option>
+                            <option value="9">9 - Septembre 🍁</option>
+                            <option value="10">10 - Octobre 🍁</option>
+                            <option value="11">11 - Novembre 🍁</option>
+                            <option value="12">12 - Décembre ❄️</option>
+                        </select>
+                    </div>
+
+                    <div class="calendar-filter-group calendar-filter-btn-group">
+                        <label class="form-label">Filtre rapide</label>
+                        <button type="button" id="btn-cal-current-month" class="btn-cal-current-toggle" title="Cliquer pour afficher uniquement le mois actuel / Recliquer pour désélectionner">
+                            🌱 Mois actif
+                        </button>
+                    </div>
+                </div>
+
+                <div class="calendar-options-subrow calendar-options-flex">
+                    <label class="toggle-year-round-label">
+                        <input type="checkbox" id="calendar-toggle-year-round" checked />
+                        <span>Inclure les ingrédients annuels (ex: oeufs, pâtes, épices, huile...)</span>
+                    </label>
+                    <div id="calendar-active-filter-badge" class="calendar-active-filter-badge" style="display: none;"></div>
+                </div>
+            </section>
+
+            <div class="calendar-stats-bar">
+                <span id="calendar-stats-count">Chargement des ingrédients...</span>
+            </div>
+
+            <div id="calendar-months-grid" class="calendar-months-grid">
+                <!-- 12 month cards dynamically populated by app.js -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Add dining profile -->
+    <div id="modal-add-profile" class="modal-backdrop" style="display: none;">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>➕ Ajouter un convive au foyer</h3>
+                <button type="button" class="btn-close-modal" id="btn-close-add-profile">✕</button>
+            </div>
+            <form id="form-add-profile">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="new-profile-name" class="form-label">Prénom ou nom du convive *</label>
+                        <input type="text" id="new-profile-name" class="form-input" placeholder="Ex: Paul, Mamie..."
+                            required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="btn-cancel-add-profile">Annuler</button>
+                    <button type="submit" class="btn-primary">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Manage Profile Ingredient Preferences -->
+    <div id="modal-profile-prefs" class="modal-backdrop" style="display: none;">
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <div>
+                    <h3 id="prefs-modal-title">🍽️ Goûts de ...</h3>
+                    <p class="text-muted text-sm" style="margin: 0.2rem 0 0 0;">Définissez les ingrédients aimés ou
+                        détestés.</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="btn-close-prefs-modal">✕</button>
+            </div>
+            <div class="prefs-search-bar">
+                <input type="text" id="prefs-ingredient-filter" class="search-input"
+                    placeholder="Filtrer un ingrédient à noter..." />
+            </div>
+            <div id="prefs-ingredients-list" class="prefs-ingredients-container">
+                <!-- Dynamically injected preference rating rows -->
+            </div>
+            <div class="modal-footer modal-footer-between">
+                <button type="button" class="btn-danger-outline btn-sm" id="btn-delete-profile">
+                    🗑️ Supprimer ce convive
+                </button>
+                <button type="button" class="btn-primary btn-sm" id="btn-done-prefs">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification for link copy or feedback -->
+    <div id="toast" class="toast" style="display: none;"></div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        FoodChoice • Système intelligent de recettes • FastAPI & CSS Natif
+    </footer>
+
+    <!-- Main JavaScript application logic -->
+    <script src="/static/app.js?v=12"></script>
+</body>
+
+</html>

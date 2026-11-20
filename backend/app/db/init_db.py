@@ -24,24 +24,25 @@ def init_db(reset: bool = False):
     # Create tables in SQLite or PostgreSQL
     Base.metadata.create_all(bind=engine)
 
-    # Ensure columns exist in tables if database was created previously
-    try:
-        with engine.connect() as conn:
-            raw_conn = conn.connection
-            cursor = raw_conn.cursor()
-            cursor.execute("PRAGMA table_info(ingredients)")
-            cols = [r[1] for r in cursor.fetchall()]
-            if cols and "needs_season_review" not in cols:
-                cursor.execute("ALTER TABLE ingredients ADD COLUMN needs_season_review BOOLEAN DEFAULT 0")
-                raw_conn.commit()
+    # Ensure columns exist in tables if SQLite database was created previously
+    if engine.name == "sqlite":
+        try:
+            with engine.connect() as conn:
+                raw_conn = conn.connection
+                cursor = raw_conn.cursor()
+                cursor.execute("PRAGMA table_info(ingredients)")
+                cols = [r[1] for r in cursor.fetchall()]
+                if cols and "needs_season_review" not in cols:
+                    cursor.execute("ALTER TABLE ingredients ADD COLUMN needs_season_review BOOLEAN DEFAULT 0")
+                    raw_conn.commit()
 
-            cursor.execute("PRAGMA table_info(recipes)")
-            cols_recipes = [r[1] for r in cursor.fetchall()]
-            if cols_recipes and "parent_recipe_id" not in cols_recipes:
-                cursor.execute("ALTER TABLE recipes ADD COLUMN parent_recipe_id INTEGER REFERENCES recipes(id)")
-                raw_conn.commit()
-    except Exception as e:
-        print(f"Migration check notice: {e}")
+                cursor.execute("PRAGMA table_info(recipes)")
+                cols_recipes = [r[1] for r in cursor.fetchall()]
+                if cols_recipes and "parent_recipe_id" not in cols_recipes:
+                    cursor.execute("ALTER TABLE recipes ADD COLUMN parent_recipe_id INTEGER REFERENCES recipes(id)")
+                    raw_conn.commit()
+        except Exception as e:
+            print(f"Migration check notice: {e}")
 
     db = SessionLocal()
     try:

@@ -1,0 +1,28 @@
+# Git
+.git/
+.gitignore
+
+# Python cache & virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases and secrets
+*.db
+*.sqlite3
+.env
+.env.*
+
+# Tests and editor files
+backend/tests/
+.vscode/
+.idea/
+*.swp
+.DS_Store

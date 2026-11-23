@@ -760,17 +760,6 @@ body {
     margin: 0;
 }
 
-.substitution-form-subrow {
-    display: grid;
-    grid-template-columns: auto 2.5fr 1fr 1fr 2fr;
-    gap: 0.5rem;
-    align-items: center;
-    background-color: #f1f5f9;
-    padding: 0.35rem 0.5rem;
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--color-primary);
-}
-
 /* Seasonality box for brand new ingredients */
 .seasonality-form-box {
     background-color: #f0fdf4;
@@ -2111,10 +2100,6 @@ body {
 
     .ingredient-form-row {
         grid-template-columns: 1fr 1fr;
-    }
-
-    .substitution-form-subrow {
-        grid-template-columns: 1fr;
     }
 
     .recipe-card-header {

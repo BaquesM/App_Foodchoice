@@ -1263,7 +1263,7 @@ function setupEventListeners() {
 }
 
 /**
- * Add a dynamic ingredient input row in the recipe creation form with optional substitution proposal.
+ * Add a dynamic ingredient input row in the recipe creation form.
  */
 function addIngredientRow(data = null) {
     const container = document.getElementById("new-recipe-ingredients-list");
@@ -1489,71 +1489,7 @@ function addIngredientRow(data = null) {
         checkNewIngredientSeasonality();
     }
 
-    // Optional substitution proposal sub-row (free-text new ingredient, quantity, ratio, note)
-    const subRow = document.createElement("div");
-    subRow.className = "substitution-form-subrow";
-
-    const subLabel = document.createElement("span");
-    subLabel.className = "subrow-label";
-    subLabel.textContent = "⇄ Substitution :";
-
-    // Free text input for substitute ingredient (not a fixed dropdown, accepts new ingredients)
-    const subNameInput = document.createElement("input");
-    subNameInput.type = "text";
-    subNameInput.className = "form-input ing-sub-name";
-    subNameInput.placeholder = "Remplacement (ex: Crème de soja, Huile...)";
-    subNameInput.setAttribute("list", "existing-substitutes-datalist");
-
-    // Quantity of the substitute ingredient (classic direct text input without dropdowns or spinner arrows)
-    const subQtyInput = document.createElement("input");
-    subQtyInput.type = "text";
-    subQtyInput.inputMode = "decimal";
-    subQtyInput.className = "form-input ing-sub-qty";
-    subQtyInput.placeholder = "Qté subst. (ex: 80, 2.5)";
-    subQtyInput.autocomplete = "off";
-    subQtyInput.title = "Quantité de l'ingrédient de substitution (ex: 80, 2.5)";
-
-    // Measurement unit for substitute ingredient (classic input without dropdown)
-    const subUnitInput = document.createElement("input");
-    subUnitInput.type = "text";
-    subUnitInput.className = "form-input ing-sub-unit";
-    subUnitInput.value = unitInput.value || "g";
-    subUnitInput.placeholder = "Unité (g, ml...)";
-    subUnitInput.title = "Indice / unité de mesure de substitution (ex: g, ml, càs, pièce...)";
-
-    // Keep subUnit synchronized with main ingredient unit until customized
-    unitInput.addEventListener("input", () => {
-        if (!subUnitInput.dataset.modified) {
-            subUnitInput.value = unitInput.value;
-        }
-    });
-
-    subUnitInput.addEventListener("input", () => {
-        subUnitInput.dataset.modified = "true";
-    });
-
-    subNameInput.addEventListener("focus", () => {
-        if (!subQtyInput.value && qtyInput.value) {
-            subQtyInput.value = qtyInput.value;
-        }
-        if (!subUnitInput.value && unitInput.value) {
-            subUnitInput.value = unitInput.value;
-        }
-    });
-
-    const subNote = document.createElement("input");
-    subNote.type = "text";
-    subNote.className = "form-input ing-sub-note";
-    subNote.placeholder = "Note (ex: à feu doux, même volume...)";
-
-    subRow.appendChild(subLabel);
-    subRow.appendChild(subNameInput);
-    subRow.appendChild(subQtyInput);
-    subRow.appendChild(subUnitInput);
-    subRow.appendChild(subNote);
-
     item.appendChild(row);
-    item.appendChild(subRow);
     item.appendChild(seasonBox);
     container.appendChild(item);
 }
@@ -1882,13 +1818,6 @@ async function handleCreateRecipeSubmit(e) {
         const unit = item.querySelector(".ing-unit")?.value.trim() || "g";
         const imp = parseInt(item.querySelector(".ing-imp")?.value, 10) || 2;
 
-        const subName = item.querySelector(".ing-sub-name")?.value.trim() || "";
-        const rawSubQty = (item.querySelector(".ing-sub-qty")?.value || "").replace(",", ".");
-        const subQty = rawSubQty ? parseFloat(rawSubQty) : null;
-        const subUnit = item.querySelector(".ing-sub-unit")?.value.trim() || unit;
-        const subNote = item.querySelector(".ing-sub-note")?.value.trim() || "";
-        const subRatio = (subQty && qty > 0) ? parseFloat((subQty / qty).toFixed(2)) : 1.0;
-
         // Check if nameVal matches existing ingredient
         const matched = state.allIngredients.find(
             (i) => i.name.toLowerCase() === nameVal.toLowerCase()
@@ -1928,11 +1857,6 @@ async function handleCreateRecipeSubmit(e) {
                 importance: imp,
                 available_months: availableMonths,
                 season_unknown: seasonUnknown,
-                substitute_name: subName || null,
-                substitute_quantity: subQty,
-                substitute_unit: subUnit,
-                substitute_ratio: subRatio,
-                substitute_note: subNote,
             });
         }
     });

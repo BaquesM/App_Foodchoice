@@ -10,6 +10,7 @@ class IngredientOut(BaseModel):
     name: str
     category: str
     available_months: list[int]
+    allergens: list[str] = []
     needs_season_review: bool = False
 
 

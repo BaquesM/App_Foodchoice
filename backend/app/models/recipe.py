@@ -12,7 +12,18 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy import Table
 from backend.app.db.session import Base
+
+MONTH_COLUMNS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+
+# Many-to-many link: an ingredient has 0..n allergens
+ingredient_allergens = Table(
+    "ingredient_allergens",
+    Base.metadata,
+    Column("ingredient_id", Integer, ForeignKey("ingredients.id", ondelete="CASCADE"), primary_key=True),
+    Column("allergen_id", Integer, ForeignKey("allergens.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class UserAccount(Base):
@@ -55,22 +66,75 @@ class Ingredient(Base):
     name = Column(String(100), unique=True, index=True, nullable=False)
     category = Column(String(50), nullable=False)  # vegetable, fruit, meat, dairy, etc.
     needs_season_review = Column(Boolean, default=False, nullable=False)
-    
-    # Available months stored as JSON string (e.g. "[5, 6, 7, 8, 9]")
-    _available_months = Column("available_months", String(100), default="[1,2,3,4,5,6,7,8,9,10,11,12]")
+
+    # 1..1 seasonality row (12 booleans) and 0..n allergens (many-to-many)
+    season = relationship(
+        "IngredientSeason", back_populates="ingredient", uselist=False,
+        cascade="all, delete-orphan",
+    )
+    allergen_links = relationship("Allergen", secondary=ingredient_allergens, back_populates="ingredients")
 
     @property
     def available_months(self) -> list[int]:
-        """Return available months (1-12) as a Python list of integers."""
-        try:
-            return json.loads(self._available_months)
-        except Exception:
+        """Return available months (1-12) as a sorted list of integers."""
+        if self.season is None:
             return list(range(1, 13))
+        return self.season.months
 
     @available_months.setter
     def available_months(self, months: list[int]):
-        """Persist available months as a sorted JSON array."""
-        self._available_months = json.dumps(sorted(list(set(months))))
+        """Persist available months into the seasonality row."""
+        if self.season is None:
+            self.season = IngredientSeason()
+        self.season.months = months
+
+    @property
+    def allergens(self) -> list[str]:
+        """Return the names of the allergens contained in this ingredient."""
+        return sorted(a.name for a in self.allergen_links)
+
+
+class IngredientSeason(Base):
+    """Seasonality of an ingredient: one boolean per month (1..1 with Ingredient)."""
+    __tablename__ = "ingredient_seasons"
+
+    ingredient_id = Column(Integer, ForeignKey("ingredients.id", ondelete="CASCADE"), primary_key=True)
+    jan = Column(Boolean, default=True, nullable=False)
+    feb = Column(Boolean, default=True, nullable=False)
+    mar = Column(Boolean, default=True, nullable=False)
+    apr = Column(Boolean, default=True, nullable=False)
+    may = Column(Boolean, default=True, nullable=False)
+    jun = Column(Boolean, default=True, nullable=False)
+    jul = Column(Boolean, default=True, nullable=False)
+    aug = Column(Boolean, default=True, nullable=False)
+    sep = Column(Boolean, default=True, nullable=False)
+    oct = Column(Boolean, default=True, nullable=False)
+    nov = Column(Boolean, default=True, nullable=False)
+    dec = Column(Boolean, default=True, nullable=False)
+
+    ingredient = relationship("Ingredient", back_populates="season")
+
+    @property
+    def months(self) -> list[int]:
+        """Months (1-12) flagged as in season."""
+        return [i for i, col in enumerate(MONTH_COLUMNS, start=1) if getattr(self, col)]
+
+    @months.setter
+    def months(self, values: list[int]):
+        wanted = set(values)
+        for i, col in enumerate(MONTH_COLUMNS, start=1):
+            setattr(self, col, i in wanted)
+
+
+class Allergen(Base):
+    """Reference list of allergens (EU 14 major allergens)."""
+    __tablename__ = "allergens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, index=True, nullable=False)  # slug, e.g. "fruits_a_coque"
+    label = Column(String(100), nullable=False)  # display name, e.g. "Fruits à coque"
+
+    ingredients = relationship("Ingredient", secondary=ingredient_allergens, back_populates="allergen_links")
 
 
 class Recipe(Base):

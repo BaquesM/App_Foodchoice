@@ -408,7 +408,8 @@ def test_create_new_ingredient_seasonality_and_unknown_warning():
     from backend.app.db.session import SessionLocal
     db = SessionLocal()
     # Cleanup any leftovers
-    db.query(Ingredient).filter(Ingredient.name.in_(["Melon de cavaillon", "Fruit exotique mystere"])).delete()
+    for ing in db.query(Ingredient).filter(Ingredient.name.in_(["Melon de cavaillon", "Fruit exotique mystere"])).all():
+        db.delete(ing)  # ORM delete so the seasonality row is removed too
     db.commit()
     db.close()
 
@@ -467,7 +468,8 @@ def test_create_new_ingredient_seasonality_and_unknown_warning():
     rec_to_del = db.query(Recipe).filter_by(id=created_id).first()
     if rec_to_del:
         db.delete(rec_to_del)
-    db.query(Ingredient).filter(Ingredient.name.in_(["Melon de cavaillon", "Fruit exotique mystere"])).delete()
+    for ing in db.query(Ingredient).filter(Ingredient.name.in_(["Melon de cavaillon", "Fruit exotique mystere"])).all():
+        db.delete(ing)  # ORM delete so the seasonality row is removed too
     db.commit()
     db.close()
 

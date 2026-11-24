@@ -1,11 +1,15 @@
 """Database initialization and test seed data injection."""
 import sys
-import json
+from pathlib import Path
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import inspect, text
 from backend.app.db.session import engine, SessionLocal, Base
 from backend.app.models.recipe import (
     UserAccount,
     HouseholdProfile,
     Ingredient,
+    Allergen,
     Recipe,
     RecipeIngredient,
     RecipeShare,
@@ -13,47 +17,58 @@ from backend.app.models.recipe import (
     UserIngredientPreference,
 )
 
+MIGRATIONS_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
+BASELINE_REVISION = "0001"
+
+
+def _alembic_config() -> Config:
+    cfg = Config(str(MIGRATIONS_INI))
+    cfg.set_main_option("script_location", str(MIGRATIONS_INI.parent / "migrations"))
+    return cfg
+
+
+def _patch_legacy_columns():
+    """
+    Databases created before Alembic may miss a few columns that were once added by hand.
+    Add them so the schema matches the baseline revision before it gets stamped.
+    """
+    insp = inspect(engine)
+    legacy_columns = {
+        "ingredients": {"needs_season_review": "BOOLEAN DEFAULT FALSE"},
+        "recipes": {"parent_recipe_id": "INTEGER REFERENCES recipes(id)"},
+        "user_accounts": {"email": "VARCHAR(150)", "supabase_uid": "VARCHAR(100)"},
+    }
+    with engine.begin() as conn:
+        for table, columns in legacy_columns.items():
+            if not insp.has_table(table):
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            for name, ddl in columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+
+
+def run_migrations():
+    """Apply pending Alembic migrations (creates tables, adds columns, migrates data)."""
+    insp = inspect(engine)
+    # Database predating Alembic: bring it to the baseline schema, then mark it as such
+    if insp.has_table("ingredients") and not insp.has_table("alembic_version"):
+        _patch_legacy_columns()
+        command.stamp(_alembic_config(), BASELINE_REVISION)
+    command.upgrade(_alembic_config(), "head")
+
+
 def init_db(reset: bool = False):
     """
-    Create tables and seed initial sample data.
+    Migrate the schema to the latest revision and seed initial sample data.
     If reset=True, existing tables are dropped and recreated.
     """
     if reset:
         Base.metadata.drop_all(bind=engine)
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
-    # Create tables in SQLite or PostgreSQL
-    Base.metadata.create_all(bind=engine)
-
-    # Ensure columns exist in tables if database was created previously
-    try:
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            if engine.name == "sqlite":
-                raw_conn = conn.connection
-                cursor = raw_conn.cursor()
-                cursor.execute("PRAGMA table_info(ingredients)")
-                cols = [r[1] for r in cursor.fetchall()]
-                if cols and "needs_season_review" not in cols:
-                    cursor.execute("ALTER TABLE ingredients ADD COLUMN needs_season_review BOOLEAN DEFAULT 0")
-
-                cursor.execute("PRAGMA table_info(recipes)")
-                cols_recipes = [r[1] for r in cursor.fetchall()]
-                if cols_recipes and "parent_recipe_id" not in cols_recipes:
-                    cursor.execute("ALTER TABLE recipes ADD COLUMN parent_recipe_id INTEGER REFERENCES recipes(id)")
-
-                cursor.execute("PRAGMA table_info(user_accounts)")
-                cols_users = [r[1] for r in cursor.fetchall()]
-                if cols_users and "email" not in cols_users:
-                    cursor.execute("ALTER TABLE user_accounts ADD COLUMN email VARCHAR(150)")
-                if cols_users and "supabase_uid" not in cols_users:
-                    cursor.execute("ALTER TABLE user_accounts ADD COLUMN supabase_uid VARCHAR(100)")
-                raw_conn.commit()
-            else:
-                conn.execute(text("ALTER TABLE user_accounts ADD COLUMN IF NOT EXISTS email VARCHAR(150)"))
-                conn.execute(text("ALTER TABLE user_accounts ADD COLUMN IF NOT EXISTS supabase_uid VARCHAR(100)"))
-                conn.commit()
-    except Exception as e:
-        print(f"Migration check notice: {e}")
+    run_migrations()
 
     db = SessionLocal()
     try:
@@ -91,18 +106,26 @@ def init_db(reset: bool = False):
         db.flush()
 
         # 3. Base ingredients
-        oeufs = Ingredient(name="Oeuf", category="protéine", _available_months=json.dumps(list(range(1, 13))))
-        beurre = Ingredient(name="Beurre", category="matière grasse", _available_months=json.dumps(list(range(1, 13))))
-        huile_olive = Ingredient(name="Huile d'olive", category="matière grasse", _available_months=json.dumps(list(range(1, 13))))
-        ciboulette = Ingredient(name="Ciboulette", category="herbe/épice", _available_months=json.dumps([4, 5, 6, 7, 8, 9, 10]))
-        persil = Ingredient(name="Persil", category="herbe/épice", _available_months=json.dumps(list(range(1, 13))))
-        pates = Ingredient(name="Pâtes", category="féculent", _available_months=json.dumps(list(range(1, 13))))
-        lardons = Ingredient(name="Lardons", category="viande", _available_months=json.dumps(list(range(1, 13))))
-        parmesan = Ingredient(name="Parmesan", category="produit laitier", _available_months=json.dumps(list(range(1, 13))))
-        tomate = Ingredient(name="Tomate", category="légume", _available_months=json.dumps([6, 7, 8, 9, 10]))
-        mozzarella = Ingredient(name="Mozzarella", category="produit laitier", _available_months=json.dumps(list(range(1, 13))))
-        courgette = Ingredient(name="Courgette", category="légume", _available_months=json.dumps([5, 6, 7, 8, 9, 10]))
-        oignon = Ingredient(name="Oignon", category="légume", _available_months=json.dumps(list(range(1, 13))))
+        oeufs = Ingredient(name="Oeuf", category="protéine", available_months=list(range(1, 13)))
+        beurre = Ingredient(name="Beurre", category="matière grasse", available_months=list(range(1, 13)))
+        huile_olive = Ingredient(name="Huile d'olive", category="matière grasse", available_months=list(range(1, 13)))
+        ciboulette = Ingredient(name="Ciboulette", category="herbe/épice", available_months=[4, 5, 6, 7, 8, 9, 10])
+        persil = Ingredient(name="Persil", category="herbe/épice", available_months=list(range(1, 13)))
+        pates = Ingredient(name="Pâtes", category="féculent", available_months=list(range(1, 13)))
+        lardons = Ingredient(name="Lardons", category="viande", available_months=list(range(1, 13)))
+        parmesan = Ingredient(name="Parmesan", category="produit laitier", available_months=list(range(1, 13)))
+        tomate = Ingredient(name="Tomate", category="légume", available_months=[6, 7, 8, 9, 10])
+        mozzarella = Ingredient(name="Mozzarella", category="produit laitier", available_months=list(range(1, 13)))
+        courgette = Ingredient(name="Courgette", category="légume", available_months=[5, 6, 7, 8, 9, 10])
+        oignon = Ingredient(name="Oignon", category="légume", available_months=list(range(1, 13)))
+
+        # Allergens (reference rows are inserted by migration 0002)
+        allergen_by_name = {a.name: a for a in db.query(Allergen).all()}
+        for ingredient, names in [
+            (oeufs, ["oeufs"]), (beurre, ["lait"]), (pates, ["gluten"]),
+            (parmesan, ["lait"]), (mozzarella, ["lait"]),
+        ]:
+            ingredient.allergen_links = [allergen_by_name[n] for n in names if n in allergen_by_name]
 
         db.add_all([
             oeufs, beurre, huile_olive, ciboulette, persil, pates,

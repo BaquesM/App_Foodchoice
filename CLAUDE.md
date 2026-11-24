@@ -1,49 +1,53 @@
-# Guide du Projet & Instructions d'Assistance (CLAUDE.md)
+# Guide du Projet FoodChoice (CLAUDE.md)
 
-Ce document sert de mémoire et de cadre de référence pour le projet **FoodChoice**.
-
----
-
-## 1. Contexte & Profil de la Développeuse
-* **Développeuse :** Marion (Docteure en sismologie).
-* **Compétences initiales :** Solide bagage en Python scientifique, Bash, Matlab, modélisation et analyse de données. Débutante en développement web.
-* **Objectif professionnel :** Monter en compétences sur des technologies logicielles standard de l'industrie (marché R&D / Backend / Data Engineering à Sophia Antipolis).
-* **Localisation :** Sophia Antipolis, France.
+Ce document sert de mémoire technique pour le projet **FoodChoice**.
 
 ---
 
-## 2. Règles Pédagogiques Impératives
-1. **Pas à pas strict (Pair Programming) :** Avancer **une seule étape à la fois**.
-2. **Explication avant action :** Toujours expliquer le *pourquoi* et le *comment* avant d'écrire ou modifier du code.
-3. **Validation explicite :** Ne jamais enchaîner plusieurs étapes sans l'accord ou la validation de Marion.
-4. **Faire le pont avec ses acquis :** Relier les concepts du web (HTTP, API, bases de données) à ce qu'elle connaît déjà (fonctions Python, scripts Bash, matrices/données).
-5. **Langue du code :** Tous les commentaires de code, docstrings et noms de variables/fonctions doivent être rédigés en **anglais** (standard de l'industrie / Sophia Antipolis).
-6. **Documentation :** Toute la documentation doit être rédigée au format Markdown (`.md`).
+## 1. Préférences de travail
+Le profil de Marion et les règles de travail (pas à pas, validation avant action, exemples concrets, langues, Git) sont dans `~/.claude/CLAUDE.md`. Ce fichier ne décrit que le projet **FoodChoice**.
 
 ---
 
-## 3. Stack Technique Retenue
+## 2. Stack Technique Retenue
 * **Langage Backend :** Python 3.10+
 * **Framework API :** FastAPI + Pydantic (validation des schémas de données)
 * **Serveur ASGI :** Uvicorn
-* **Base de données & ORM :** PostgreSQL (Cloud/Prod) / SQLite (développement local) via SQLAlchemy
+* **Base de données & ORM :** PostgreSQL (Supabase, prod) / SQLite (développement local) via SQLAlchemy
+* **Migrations :** Alembic (`backend/alembic.ini`, `backend/migrations/versions/`), appliquées automatiquement au démarrage du serveur par `init_db()` (donc à chaque déploiement Render)
 * **Frontend :** HTML5 sémantique, CSS Natif (variables CSS, Flexbox/Grid, responsive), JavaScript moderne (ES6+, `fetch` asynchrone)
 * **DevOps & Déploiement :** Git/GitHub, Docker, hébergement Cloud (ex: Render) accessible sur mobile et PC
-* **Tests :** pytest, httpx
+* **Tests :** pytest, httpx (base SQLite temporaire isolée, construite via les migrations : voir `backend/tests/conftest.py`)
 
 ---
 
-## 4. Objectifs Fonctionnels de FoodChoice
+## 3. Objectifs Fonctionnels de FoodChoice
 1. **Gestion des ingrédients :** Saisie des ingrédients disponibles dans le frigo/placard.
 2. **Moteur de recettes :** Correspondance intelligente (score de matching selon les ingrédients possédés).
-3. **Moteur de substitution :** Proposer des alternatives si un ingrédient manque (ex: yaourt grec à la place de crème fraîche).
+3. **Saisonnalité & allergènes :** Chaque ingrédient a ses mois de disponibilité et une liste d'allergènes (14 allergènes officiels UE).
 4. **Apprentissage des goûts (Feedback loop) :** Prise en compte des ingrédients aimés/rejetés pour pondérer les recommandations.
+
+> [!NOTE]
+> Le moteur de substitution a été **abandonné** (table `substitutions` supprimée par la migration `0003`). Un ingrédient est `available` ou `missing`. Un veto (note -2) d'un convive n'exclut pas la recette : il affiche une bannière « X déteste Y » et la fait passer après les recettes sans veto.
+
+---
+
+## 4. Modèle de Données (ingrédients)
+```
+ingredients (id, name, category, needs_season_review)
+   1..1  ingredient_seasons (ingredient_id PK/FK, jan … dec : 12 booléens)
+   0..n  ingredient_allergens (ingredient_id, allergen_id)  ->  allergens (id, name, label)
+```
+* L'API expose toujours `available_months: [6, 7, 8]` et `allergens: ["lait"]` (conversion faite par les propriétés du modèle `Ingredient`).
+* `ingredient_seasons` et `ingredient_allergens` se vident automatiquement quand on supprime un ingrédient (`ON DELETE CASCADE`). `recipe_ingredients` et `user_ingredient_preferences` **bloquent** la suppression tant qu'elles le référencent.
+* Les ids ne sont jamais recalculés : les trous de numérotation sont normaux.
+* Le seed de `init_db.py` ne s'exécute que si aucun compte n'existe (jamais sur Supabase).
 
 ---
 
 ## 5. Feuille de Route (Roadmap & Backlog)
-* **En cours (Étape 1) :** Gestion visuelle des profils du foyer (ajout de convives) et interface de notation des goûts (-2 à +2).
-* **Prochaine étape (Étape 4) :** Dockerisation & Déploiement Cloud (Dockerfile, hébergement Render/Fly.io).
+* **Réalisé :** profils du foyer et notation des goûts (-2 à +2) ; Dockerisation et déploiement (Render + Supabase) ; migrations Alembic ; saisonnalité en booléens et allergènes ; script d'ajout d'ingrédients.
+* **À faire :** renseigner les allergènes et corriger les catégories des ingrédients existants sur Supabase (en cours, à la main) ; filtrer les recettes selon les allergènes des convives.
 * **Gardé de côté pour plus tard :**
   * **Option 2 :** Générateur de liste de courses (export des ingrédients manquants ajustés aux portions).
   * **Option 3 :** Vue détaillée « Mode Cuisine » (pas à pas avec minuteurs et ingrédients barrables).
@@ -60,4 +64,12 @@ uvicorn backend.app.main:app --reload --port 8080
 
 # Lancer la suite de tests
 pytest backend/tests
+
+# Ajouter un ingrédient (catégorie, mois, allergènes) en local ou sur Supabase
+python scripts/add_ingredient.py
+
+# Migrations (depuis la racine du projet)
+alembic -c backend/alembic.ini upgrade head                              # appliquer
+alembic -c backend/alembic.ini revision --autogenerate -m "description"  # générer (à relire !)
 ```
+Pour viser Supabase avec le script, mettre `SUPABASE_DATABASE_URL` dans `.env` (ignoré par git, voir `.env.example`).

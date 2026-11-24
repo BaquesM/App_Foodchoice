@@ -2230,7 +2230,6 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
                         <span>🔥 Cuisson : ${rec.cook_time_minutes} min</span>
                         <span>🍽️ Portions : ${rec.servings} pers.</span>
                         ${seasonBadge}
-                        ${rec.is_alternative && rec.parent_recipe_title ? `<span>🔄 Variante de : <strong>${rec.parent_recipe_title}</strong></span>` : ''}
                     </div>
                 </div>
                 ${scorePillHtml}
@@ -2553,7 +2552,6 @@ function renderRecipeDetailContent(rec) {
                     <span>🍽️ Portions : ${rec.servings} pers.</span>
                     <span>👨‍🍳 Proposé par : <strong>${rec.author_name || "Communauté"}</strong></span>
                     ${seasonBadge}
-                    ${rec.is_alternative && rec.parent_recipe_title ? `<span>🔄 Variante de : <strong>${rec.parent_recipe_title}</strong></span>` : ''}
                 </div>
             </div>
             ${scorePillHtml}

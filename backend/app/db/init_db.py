@@ -13,7 +13,6 @@ from backend.app.models.recipe import (
     Recipe,
     RecipeIngredient,
     RecipeShare,
-    Substitution,
     UserIngredientPreference,
 )
 
@@ -132,11 +131,6 @@ def init_db(reset: bool = False):
             lardons, parmesan, tomate, mozzarella, courgette, oignon
         ])
         db.flush()
-
-        # 4. Substitutions
-        sub1 = Substitution(original_ingredient_id=beurre.id, substitute_ingredient_id=huile_olive.id, ratio=0.8, note="Pour la cuisson à la poêle")
-        sub2 = Substitution(original_ingredient_id=ciboulette.id, substitute_ingredient_id=persil.id, ratio=1.0, note="Apporte une fraîcheur similaire")
-        db.add_all([sub1, sub2])
 
         # 5. Recipes with Visibility & Ownership
         # Recipe 1: Herb Omelet - Marion's private recipe

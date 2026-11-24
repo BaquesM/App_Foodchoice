@@ -2127,24 +2127,11 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
         const ingredientsHtml = rec.ingredients.map((ing) => {
             let statusIcon = "";
             let statusClass = "";
-            let subBox = "";
 
             if (showMatchScore) {
                 if (ing.status === "available") {
                     statusIcon = "✓";
                     statusClass = "status-available";
-                } else if (ing.status === "substituted") {
-                    statusIcon = "⇄";
-                    statusClass = "status-substituted";
-                    if (ing.substitution) {
-                        subBox = `
-                            <div class="substitution-box">
-                                <strong>Substitution suggérée :</strong> ${ing.substitution.substitute_name} 
-                                (${ing.substitution.substituted_quantity} ${ing.substitution.unit})
-                                <br><small>${ing.substitution.reason}. ${ing.substitution.note}</small>
-                            </div>
-                        `;
-                    }
                 } else {
                     statusIcon = "✕";
                     statusClass = "status-missing";
@@ -2175,7 +2162,6 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
                             <strong>${ing.quantity} ${ing.unit}</strong>
                         </div>
                     </div>
-                    ${subBox}
                 </div>
             `;
         }).join("");
@@ -2467,23 +2453,10 @@ function renderRecipeDetailContent(rec) {
     const ingredientsHtml = rec.ingredients.map((ing) => {
         let statusIcon = "•";
         let statusClass = "status-available";
-        let subBox = "";
 
         if (ing.status === "available") {
             statusIcon = "✓";
             statusClass = "status-available";
-        } else if (ing.status === "substituted") {
-            statusIcon = "⇄";
-            statusClass = "status-substituted";
-            if (ing.substitution) {
-                subBox = `
-                    <div class="substitution-box">
-                        <strong>Substitution suggérée :</strong> ${ing.substitution.substitute_name} 
-                        (${ing.substitution.substituted_quantity} ${ing.substitution.unit})
-                        <br><small>${ing.substitution.reason}. ${ing.substitution.note}</small>
-                    </div>
-                `;
-            }
         } else if (ing.status === "missing") {
             statusIcon = "✕";
             statusClass = "status-missing";
@@ -2510,7 +2483,6 @@ function renderRecipeDetailContent(rec) {
                         <strong>${ing.quantity} ${ing.unit}</strong>
                     </div>
                 </div>
-                ${subBox}
             </div>
         `;
     }).join("");

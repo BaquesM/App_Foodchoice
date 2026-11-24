@@ -15,7 +15,6 @@ from backend.app.models.recipe import (
     Recipe,
     RecipeIngredient,
     RecipeShare,
-    Substitution,
     UserIngredientPreference,
     RecipeUpdateNotification,
 )
@@ -275,7 +274,7 @@ def _is_exact_ingredient_duplicate(db: Session, existing_recipe: Recipe, payload
 
 
 def _save_recipe_ingredients(db: Session, recipe: Recipe, ingredients_payload: list, account: UserAccount):
-    """Resolve and attach ingredients and optional substitutions to a recipe."""
+    """Resolve and attach ingredients to a recipe."""
     for item in ingredients_payload:
         ingredient = None
         if item.ingredient_id:
@@ -326,53 +325,6 @@ def _save_recipe_ingredients(db: Session, recipe: Recipe, ingredients_payload: l
                 importance=item.importance,
             )
         )
-
-        # Register optional substitution rule if provided (either via free-text name or ID)
-        sub_name = (item.substitute_name or "").strip()
-        sub_ing = None
-
-        if sub_name:
-            sub_ing = db.query(Ingredient).filter(Ingredient.name.ilike(sub_name)).first()
-            if not sub_ing:
-                sub_ing = Ingredient(
-                    name=sub_name.capitalize(),
-                    category=item.category or "autre",
-                )
-                db.add(sub_ing)
-                db.flush()
-        elif item.substitute_ingredient_id:
-            sub_ing = db.query(Ingredient).filter_by(id=item.substitute_ingredient_id).first()
-
-        if sub_ing and sub_ing.id != ingredient.id:
-            ratio = item.substitute_ratio
-            if item.substitute_quantity and item.quantity > 0:
-                ratio = round(item.substitute_quantity / item.quantity, 2)
-
-            existing_sub = (
-                db.query(Substitution)
-                .filter_by(
-                    original_ingredient_id=ingredient.id,
-                    substitute_ingredient_id=sub_ing.id,
-                )
-                .first()
-            )
-            unit_label = item.substitute_unit or item.unit or "g"
-            note_text = item.substitute_note or f"Proposé en substitution de {ingredient.name}"
-            if item.substitute_quantity:
-                note_text += f" (Qté: {item.substitute_quantity} {unit_label})"
-
-            if not existing_sub:
-                db.add(
-                    Substitution(
-                        original_ingredient_id=ingredient.id,
-                        substitute_ingredient_id=sub_ing.id,
-                        ratio=ratio or 1.0,
-                        note=note_text,
-                    )
-                )
-            else:
-                existing_sub.ratio = ratio or existing_sub.ratio
-                existing_sub.note = note_text
 
 
 @router.post("/recipes", response_model=RecipeRecommendationOut, status_code=status.HTTP_201_CREATED)
@@ -512,7 +464,7 @@ def update_recipe(recipe_id: int, payload: RecipeUpdate, db: Session = Depends(g
     recipe.visibility = payload.visibility
     recipe.parent_recipe_id = payload.parent_recipe_id
 
-    # Remove existing recipe ingredients and substitutions for this recipe
+    # Remove existing recipe ingredients for this recipe
     db.query(RecipeIngredient).filter_by(recipe_id=recipe.id).delete()
 
     _save_recipe_ingredients(db, recipe, payload.ingredients, account)

@@ -1,4 +1,4 @@
-"""Recommendation, compatibility scoring, and substitution engine."""
+"""Recommendation, compatibility scoring, engine."""
 from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass, field
@@ -8,7 +8,6 @@ from backend.app.models.recipe import (
     RecipeShare,
     Ingredient,
     RecipeIngredient,
-    Substitution,
     HouseholdProfile,
     UserIngredientPreference,
 )
@@ -22,9 +21,8 @@ class IngredientMatch:
     quantity: float
     unit: str
     importance: int
-    status: str  # "available", "substituted", "missing"
+    status: str  # "available", "missing"
     in_season: bool
-    substitution: Optional[dict] = None
     user_opinions: list[dict] = field(default_factory=list)
 
 @dataclass
@@ -43,7 +41,7 @@ class RecipeRecommendation:
     match_score: float  # 0.0 to 100.0 %
     seasonality_score: float  # % of ingredients in season
     preference_score: float  # Average rating from dining users (-2 to +2)
-    has_veto: bool  # True if any dining user gave -2 with no valid substitution
+    has_veto: bool  # True if any dining user gave -2
     is_alternative: bool = False
     parent_recipe_id: Optional[int] = None
     parent_recipe_title: Optional[str] = None
@@ -71,7 +69,6 @@ def search_and_rank_recipes(
        - Guest (account_id=None): only sees public recipes (or specific target_recipe_ids via share token).
        - Logged-in account: sees own recipes + specifically shared recipes (+ public recipes if include_public=True).
     2. Compatibility score with possessed ingredients (weighted by importance).
-    3. Available substitutions for missing or disliked ingredients.
     4. Multi-user consensus of selected household profiles (dislike penalties and veto detection).
     5. Ingredient seasonality.
     6. Minimum match score threshold.
@@ -124,12 +121,6 @@ def search_and_rank_recipes(
         for pref in prefs:
             profile_prefs_map[pref.profile_id][pref.ingredient_id] = pref.rating
 
-    # 3. Fetch all registered substitutions
-    all_substitutions = db.query(Substitution).all()
-    sub_map: dict[int, list[Substitution]] = {}
-    for sub in all_substitutions:
-        sub_map.setdefault(sub.original_ingredient_id, []).append(sub)
-
     recommendations: list[RecipeRecommendation] = []
 
     for recipe in candidate_recipes:
@@ -172,56 +163,16 @@ def search_and_rank_recipes(
                 if rating <= -1:
                     disliked_by_profiles.append((pid, rating))
 
-            # Availability and substitution resolution
-            status = "missing"
-            chosen_sub = None
-
-            # Case A: Ingredient is in pantry
+            # Availability resolution
             if ing.id in available_set:
-                # If a dining profile hates it (-2), check if an accepted substitute is available
-                hate_profile = next((p for p, r in disliked_by_profiles if r == -2), None)
-                if hate_profile and ing.id in sub_map:
-                    for candidate_sub in sub_map[ing.id]:
-                        if candidate_sub.substitute_ingredient_id in available_set:
-                            sub_rating = profile_prefs_map.get(hate_profile, {}).get(candidate_sub.substitute_ingredient_id, 0)
-                            if sub_rating >= 0:
-                                chosen_sub = {
-                                    "substitute_id": candidate_sub.substitute_ingredient_id,
-                                    "substitute_name": candidate_sub.substitute_ingredient.name,
-                                    "ratio": candidate_sub.ratio,
-                                    "substituted_quantity": round(scaled_qty * candidate_sub.ratio, 2),
-                                    "unit": ri.unit,
-                                    "note": candidate_sub.note,
-                                    "reason": f"Suggéré car {profile_names.get(hate_profile)} n'aime pas {ing.name}",
-                                }
-                                status = "substituted"
-                                earned_weight += weight * 0.95
-                                break
+                status = "available"
+                earned_weight += weight
+            else:
+                status = "missing"
 
-                if status != "substituted":
-                    status = "available"
-                    earned_weight += weight
-
-            # Case B: Ingredient is missing; check for pantry substitute
-            elif ing.id in sub_map:
-                for candidate_sub in sub_map[ing.id]:
-                    if candidate_sub.substitute_ingredient_id in available_set:
-                        chosen_sub = {
-                            "substitute_id": candidate_sub.substitute_ingredient_id,
-                            "substitute_name": candidate_sub.substitute_ingredient.name,
-                            "ratio": candidate_sub.ratio,
-                            "substituted_quantity": round(scaled_qty * candidate_sub.ratio, 2),
-                            "unit": ri.unit,
-                            "note": candidate_sub.note,
-                            "reason": f"Remplace {ing.name} manquant",
-                        }
-                        status = "substituted"
-                        earned_weight += weight * 0.9
-                        break
-
-            # Veto check: if someone gave -2 and no substitute was found
+            # Veto check: someone gave -2 to an ingredient of the recipe
             for pid, rating in disliked_by_profiles:
-                if rating == -2 and status != "substituted":
+                if rating == -2:
                     has_veto = True
                     veto_reasons.append(f"{profile_names.get(pid)} déteste {ing.name}")
 
@@ -235,7 +186,6 @@ def search_and_rank_recipes(
                     importance=weight,
                     status=status,
                     in_season=in_season,
-                    substitution=chosen_sub,
                     user_opinions=opinions,
                 )
             )

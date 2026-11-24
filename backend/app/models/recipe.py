@@ -198,20 +198,6 @@ class RecipeIngredient(Base):
     ingredient = relationship("Ingredient")
 
 
-class Substitution(Base):
-    """Substitution rule between ingredients."""
-    __tablename__ = "substitutions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    original_ingredient_id = Column(Integer, ForeignKey("ingredients.id"), nullable=False)
-    substitute_ingredient_id = Column(Integer, ForeignKey("ingredients.id"), nullable=False)
-    ratio = Column(Float, default=1.0)
-    note = Column(String(255), default="")
-
-    original_ingredient = relationship("Ingredient", foreign_keys=[original_ingredient_id])
-    substitute_ingredient = relationship("Ingredient", foreign_keys=[substitute_ingredient_id])
-
-
 class UserIngredientPreference(Base):
     """Preference rating of a household member for a given ingredient."""
     __tablename__ = "user_ingredient_preferences"

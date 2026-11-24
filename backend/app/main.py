@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 # Create the FastAPI application instance
 app = FastAPI(
     title="FoodChoice API",
-    description="Smart recipe recommendation and ingredient substitution API",
+    description="Smart recipe recommendation API",
     version="0.1.0",
     lifespan=lifespan,
 )

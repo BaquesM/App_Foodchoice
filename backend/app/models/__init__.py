@@ -6,7 +6,6 @@ from backend.app.models.recipe import (
     RecipeShare,
     Ingredient,
     RecipeIngredient,
-    Substitution,
     UserIngredientPreference,
 )
 
@@ -17,6 +16,5 @@ __all__ = [
     "RecipeShare",
     "Ingredient",
     "RecipeIngredient",
-    "Substitution",
     "UserIngredientPreference",
 ]

@@ -78,12 +78,6 @@ class RecipeIngredientCreate(BaseModel):
     importance: int = Field(default=2, ge=1, le=3, description="1=Optional, 2=Major, 3=Essential")
     available_months: Optional[list[int]] = Field(default=None, description="Months in season (1-12) for new ingredient")
     season_unknown: bool = Field(default=False, description="Whether user selected 'Je sais pas' to warn admin for manual review")
-    substitute_name: Optional[str] = Field(default=None, description="Free-text name of substitute ingredient (new or existing)")
-    substitute_ingredient_id: Optional[int] = Field(default=None, description="Optional substitute ingredient ID")
-    substitute_quantity: Optional[float] = Field(default=None, gt=0, description="Quantity of substitute ingredient")
-    substitute_unit: Optional[str] = Field(default="g", description="Unit of measurement for substitute ingredient")
-    substitute_ratio: float = Field(default=1.0, gt=0, description="Conversion ratio for substitution")
-    substitute_note: str = Field(default="", description="Optional culinary note for substitution")
 
 
 class RecipeCreate(BaseModel):
@@ -120,17 +114,6 @@ class SearchRequest(BaseModel):
     include_public: bool = Field(default=True, description="Whether to include public recipes in search results")
 
 
-class SubstitutionInfo(BaseModel):
-    """Substitution details attached to an ingredient match."""
-    substitute_id: int
-    substitute_name: str
-    ratio: float
-    substituted_quantity: float
-    unit: str
-    note: str
-    reason: str
-
-
 class IngredientMatchOut(BaseModel):
     """Detailed ingredient match state."""
     ingredient_id: int
@@ -141,7 +124,6 @@ class IngredientMatchOut(BaseModel):
     importance: int
     status: str
     in_season: bool
-    substitution: Optional[SubstitutionInfo] = None
     user_opinions: list[dict] = Field(default_factory=list)
 
 

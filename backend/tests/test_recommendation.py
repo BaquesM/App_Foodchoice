@@ -29,28 +29,6 @@ def test_missing_low_importance_ingredient_gives_high_score(db_session):
     assert omelette.match_score == pytest.approx(83.3, abs=0.2)
     assert results[0].recipe_id == omelette.recipe_id
 
-def test_substitution_works_for_missing_ingredient(db_session):
-    """
-    User has Eggs but lacks Butter. User has Olive oil (registered butter substitute).
-    Expected score: (3 + 2*0.9) / 6 = 4.8 / 6 = 80.0%.
-    """
-    marion = db_session.query(UserAccount).filter_by(username="marion").first()
-    oeuf = db_session.query(Ingredient).filter_by(name="Oeuf").first()
-    huile = db_session.query(Ingredient).filter_by(name="Huile d'olive").first()
-
-    results = search_and_rank_recipes(
-        db=db_session,
-        available_ingredient_ids=[oeuf.id, huile.id],
-        account_id=marion.id,
-    )
-
-    omelette = next(r for r in results if r.title == "Omelette aux fines herbes")
-    assert omelette.match_score == pytest.approx(80.0, abs=0.2)
-
-    beurre_match = next(i for i in omelette.ingredients if i.name == "Beurre")
-    assert beurre_match.status == "substituted"
-    assert beurre_match.substitution["substitute_name"] == "Huile d'olive"
-
 def test_servings_scaling(db_session):
     """
     Ensure quantities scale proportionally when changing servings from 2 to 4.

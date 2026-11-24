@@ -1236,10 +1236,6 @@ body {
     color: var(--color-success);
 }
 
-.status-substituted {
-    color: var(--color-info);
-}
-
 .status-missing {
     color: var(--text-muted);
 }
@@ -1255,17 +1251,6 @@ body {
 .importance-essential {
     background-color: #fee2e2;
     color: #991b1b;
-}
-
-.substitution-box {
-    background-color: #eff6ff;
-    border: 1px dashed #93c5fd;
-    color: #1e40af;
-    padding: 0.4rem 0.6rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-    margin-left: 1.5rem;
 }
 
 /* Sharing Actions Bar on Recipe Cards */

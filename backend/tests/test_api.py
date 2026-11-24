@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.db.session import SessionLocal
-from backend.app.models.recipe import Ingredient, Recipe, Substitution, UserAccount, HouseholdProfile, UserIngredientPreference, RecipeUpdateNotification
+from backend.app.models.recipe import Ingredient, Recipe, UserAccount, HouseholdProfile, UserIngredientPreference, RecipeUpdateNotification
 
 client = TestClient(app)
 
@@ -155,103 +155,6 @@ def test_list_public_recipes():
     assert "Pâtes Carbonara" in titles
 
 
-def test_create_recipe_with_substitution():
-    """Ensure proposing a substitution ingredient during recipe creation registers the rule."""
-    db = SessionLocal()
-    for old in db.query(Recipe).filter_by(title="Gratin de légumes au parmesan").all():
-        db.delete(old)
-    db.commit()
-
-    accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-    ingredients = client.get("/api/ingredients").json()
-    parmesan_id = next(i["id"] for i in ingredients if i["name"] == "Parmesan")
-    mozzarella_id = next(i["id"] for i in ingredients if i["name"] == "Mozzarella")
-
-    payload = {
-        "account_id": marion["id"],
-        "title": "Gratin de légumes au parmesan",
-        "instructions": "Cuire les légumes et gratiner au four avec le fromage.",
-        "prep_time_minutes": 10,
-        "cook_time_minutes": 25,
-        "base_servings": 4,
-        "visibility": "private",
-        "ingredients": [
-            {
-                "ingredient_id": parmesan_id,
-                "quantity": 50.0,
-                "unit": "g",
-                "importance": 2,
-                "substitute_ingredient_id": mozzarella_id,
-                "substitute_ratio": 1.2,
-                "substitute_note": "Mozzarella râpée si pas de parmesan"
-            }
-        ]
-    }
-    res = client.post("/api/recipes", json=payload)
-    assert res.status_code == 201
-    created = res.json()
-    assert created["title"] == "Gratin de légumes au parmesan"
-
-    # Cleanup
-    rec_db = db.query(Recipe).filter_by(id=created["recipe_id"]).first()
-    if rec_db:
-        db.delete(rec_db)
-        db.commit()
-    db.close()
-
-
-def test_create_recipe_with_unknown_substitute_name_and_quantity():
-    """Ensure free-text unknown substitute ingredients are automatically created and ratio is computed."""
-    db = SessionLocal()
-    for old in db.query(Recipe).filter_by(title="Poêlée douce").all():
-        db.delete(old)
-    db.commit()
-
-    accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-    ingredients = client.get("/api/ingredients").json()
-    courgette_id = next(i["id"] for i in ingredients if i["name"] == "Courgette")
-
-    payload = {
-        "account_id": marion["id"],
-        "title": "Poêlée douce",
-        "instructions": "Mélanger et cuire au four.",
-        "prep_time_minutes": 10,
-        "cook_time_minutes": 30,
-        "base_servings": 4,
-        "visibility": "private",
-        "ingredients": [
-            {
-                "ingredient_id": courgette_id,
-                "quantity": 100.0,
-                "unit": "g",
-                "importance": 2,
-                "substitute_name": "Crème d'avoine",
-                "substitute_quantity": 80.0,
-                "substitute_ratio": 0.8,
-                "substitute_note": "Version végétale sans lactose"
-            }
-        ]
-    }
-    res = client.post("/api/recipes", json=payload)
-    assert res.status_code == 201
-    created = res.json()
-
-    # Verify that 'Crème d'avoine' was created in ingredients catalog
-    all_ing = client.get("/api/ingredients").json()
-    creme_avoine = next((i for i in all_ing if "avoine" in i["name"].lower()), None)
-    assert creme_avoine is not None
-    assert creme_avoine["name"] == "Crème d'avoine"
-
-    # Cleanup
-    rec_db = db.query(Recipe).filter_by(id=created["recipe_id"]).first()
-    if rec_db:
-        db.delete(rec_db)
-        db.commit()
-    db.close()
-
-
 def test_shared_with_in_recipe_recommendation():
     """Ensure recipes have shared_with list populated with recipient display names."""
     accounts = client.get("/api/accounts").json()
@@ -339,65 +242,6 @@ def test_create_recipe_with_new_ingredient_and_category():
 
     # Clean up test recipe
     db = SessionLocal()
-    db.query(Recipe).filter_by(id=created["recipe_id"]).delete()
-    db.commit()
-    db.close()
-
-
-def test_create_recipe_with_substitute_unit_and_quantity():
-    """Ensure substitute unit and quantity are saved without requiring an explicit ratio."""
-    from backend.app.db.session import SessionLocal
-    from backend.app.models.recipe import Recipe, Substitution
-
-    db_init = SessionLocal()
-    for old in db_init.query(Recipe).filter_by(title="Salade verte vinaigrette").all():
-        db_init.delete(old)
-    db_init.commit()
-    db_init.close()
-
-    accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-
-    payload = {
-        "account_id": marion["id"],
-        "title": "Salade verte vinaigrette",
-        "instructions": "Laver et assaisonner.",
-        "prep_time_minutes": 5,
-        "cook_time_minutes": 0,
-        "base_servings": 2,
-        "visibility": "private",
-        "ingredients": [
-            {
-                "name": "Huile de colza",
-                "category": "matière grasse",
-                "quantity": 20.0,
-                "unit": "ml",
-                "importance": 2,
-                "substitute_name": "Huile de noix",
-                "substitute_quantity": 15.0,
-                "substitute_unit": "ml",
-                "substitute_note": "Goût plus fruité"
-            }
-        ]
-    }
-    res = client.post("/api/recipes", json=payload)
-    assert res.status_code == 201
-    created = res.json()
-    assert created["title"] == "Salade verte vinaigrette"
-
-    # Check that substitution note contains unit and calculated ratio
-    db = SessionLocal()
-    sub = (
-        db.query(Substitution)
-        .join(Substitution.original_ingredient)
-        .filter(Substitution.original_ingredient.has(name="Huile de colza"))
-        .first()
-    )
-    assert sub is not None
-    assert sub.ratio == pytest.approx(0.75, abs=0.01)
-    assert "15.0 ml" in sub.note
-
-    # Clean up test recipe
     db.query(Recipe).filter_by(id=created["recipe_id"]).delete()
     db.commit()
     db.close()

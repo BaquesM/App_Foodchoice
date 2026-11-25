@@ -2205,6 +2205,37 @@ async function triggerSearch() {
     }
 }
 
+const ALLERGEN_ICONS = {
+    gluten: "🌾",
+    crustaces: "🦐",
+    oeufs: "🥚",
+    poissons: "🐟",
+    arachides: "🥜",
+    soja: "🫘",
+    lait: "🥛",
+    fruits_a_coque: "🌰",
+    celeri: "🥬",
+    moutarde: "🫙",
+    sesame: "🥯",
+    sulfites: "🍷",
+    lupin: "🌼",
+    mollusques: "🦪",
+};
+
+/**
+ * Render allergen icon badges with hover tooltips for a recipe's allergen slugs.
+ */
+function renderRecipeAllergenIcons(allergenSlugs) {
+    if (!allergenSlugs || allergenSlugs.length === 0) return "";
+    const labelMap = new Map(state.allAllergens.map((a) => [a.name, a.label]));
+    const badges = allergenSlugs.map((slug) => {
+        const icon = ALLERGEN_ICONS[slug] || "⚠️";
+        const label = (labelMap.get(slug) || slug).replace(/"/g, "&quot;");
+        return `<span class="allergen-icon-badge" data-tooltip="Allergène : ${label}" title="Allergène : ${label}" aria-label="Allergène : ${label}">${icon}</span>`;
+    });
+    return `<span class="recipe-allergen-icons">${badges.join("")}</span>`;
+}
+
 /**
  * Build and render HTML cards for recipe list.
  * @param {Array} recipes - Array of recipe objects
@@ -2378,6 +2409,8 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
 
         actionsRow += `</div>`;
 
+        const allergenIconsHtml = renderRecipeAllergenIcons(rec.allergens);
+
         card.innerHTML = `
             ${vetoHtml}
             <div class="recipe-card-header">
@@ -2386,6 +2419,7 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
                         <h4 class="recipe-title"><a href="javascript:void(0)" class="recipe-title-link" data-recipe-id="${rec.recipe_id}">${rec.title}</a></h4>
                         ${alternativePill}
                         ${visibilityPill}
+                        ${allergenIconsHtml}
                     </div>
                     <div class="recipe-meta">
                         <span>⏱️ Prépa : ${rec.prep_time_minutes} min</span>

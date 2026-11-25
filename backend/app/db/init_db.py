@@ -125,6 +125,7 @@ def init_db(reset: bool = False):
             (parmesan, ["lait"]), (mozzarella, ["lait"]),
         ]:
             ingredient.allergen_links = [allergen_by_name[n] for n in names if n in allergen_by_name]
+            ingredient.sync_diet()
 
         db.add_all([
             oeufs, beurre, huile_olive, ciboulette, persil, pates,

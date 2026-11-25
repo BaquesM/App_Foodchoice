@@ -74,8 +74,16 @@ def choose_database_url() -> str:
             return url
 
 
-def add_ingredient(db, name: str, category: str, months: list[int], allergen_names: list[str]):
-    """Create the ingredient with its seasonality and allergens. Returns None if the name already exists."""
+def add_ingredient(
+    db,
+    name: str,
+    category: str,
+    months: list[int],
+    allergen_names: list[str],
+    is_vegetarian: bool | None = None,
+    is_vegan: bool | None = None,
+):
+    """Create the ingredient with its seasonality, allergens and diet flags. Returns None if the name already exists."""
     from backend.app.models.recipe import Allergen, Ingredient
 
     if db.query(Ingredient).filter(Ingredient.name.ilike(name)).first():
@@ -83,6 +91,11 @@ def add_ingredient(db, name: str, category: str, months: list[int], allergen_nam
     allergens = db.query(Allergen).filter(Allergen.name.in_(allergen_names)).all() if allergen_names else []
     ingredient = Ingredient(name=name, category=category, available_months=months)
     ingredient.allergen_links = allergens
+    ingredient.sync_diet()
+    if is_vegetarian is not None:
+        ingredient.diet.is_vegetarian = is_vegetarian
+    if is_vegan is not None:
+        ingredient.diet.is_vegan = is_vegan
     db.add(ingredient)
     db.commit()
     return ingredient
@@ -94,7 +107,7 @@ def main():
     # Imported only now: the session module reads DATABASE_URL at import time
     from backend.app.db.init_db import run_migrations
     from backend.app.db.session import SessionLocal
-    from backend.app.models.recipe import Allergen, Ingredient
+    from backend.app.models.recipe import Allergen, Ingredient, infer_diets
 
     print("\nVérification du schéma de la base (migrations)...")
     run_migrations()
@@ -145,14 +158,21 @@ def main():
                 except ValueError as e:
                     print(e)
 
+            default_veg, default_vegan = infer_diets(category, allergen_names)
+            print("\nRégimes (déduits automatiquement — Entrée pour valider) :")
+            is_vegetarian = ask_yes_no("  Végétarien ?", default=default_veg)
+            is_vegan = ask_yes_no("  Végan ?", default=default_vegan)
+
             print("\n" + "-" * 50)
             print("Récapitulatif :")
             print(f"  - Ingrédient : {name}")
             print(f"  - Catégorie  : {category}")
             print(f"  - Mois       : {', '.join(MONTH_NAMES[m - 1] for m in months)}")
             print(f"  - Allergènes : {', '.join(a.label for a in all_allergens if a.name in allergen_names) or 'aucun'}")
+            print(f"  - Végétarien : {'Oui' if is_vegetarian else 'Non'}")
+            print(f"  - Végan      : {'Oui' if is_vegan else 'Non'}")
             if ask_yes_no("Enregistrer dans la base ?"):
-                add_ingredient(db, name, category, months, allergen_names)
+                add_ingredient(db, name, category, months, allergen_names, is_vegetarian, is_vegan)
                 print("✅ Ingrédient enregistré.")
             else:
                 print("Annulé.")

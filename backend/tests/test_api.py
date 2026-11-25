@@ -796,3 +796,40 @@ def test_sync_supabase_user():
     db.close()
 
 
+def test_ingredient_diets_auto_inference():
+    """Verify /api/ingredients exposes is_vegetarian/is_vegan and auto-infers diets on new ingredients."""
+    by_name = {i["name"]: i for i in client.get("/api/ingredients").json()}
+
+    assert by_name["Tomate"]["is_vegetarian"] is True
+    assert by_name["Tomate"]["is_vegan"] is True
+
+    assert by_name["Lardons"]["is_vegetarian"] is False
+    assert by_name["Lardons"]["is_vegan"] is False
+
+    assert by_name["Parmesan"]["is_vegetarian"] is True
+    assert by_name["Parmesan"]["is_vegan"] is False
+
+    assert by_name["Oeuf"]["is_vegetarian"] is True
+    assert by_name["Oeuf"]["is_vegan"] is False
+
+    # Verify automatic diet inference when creating new ingredients directly
+    db = SessionLocal()
+    try:
+        saumon = Ingredient(name="Saumon test diet", category="poisson", available_months=list(range(1, 13)))
+        knacki = Ingredient(name="Knacki végétale test diet", category="produit végétal", available_months=list(range(1, 13)))
+        comte = Ingredient(name="Comté test diet", category="fromage", available_months=list(range(1, 13)))
+        db.add_all([saumon, knacki, comte])
+        db.commit()
+
+        assert saumon.is_vegetarian is False and saumon.is_vegan is False
+        assert knacki.is_vegetarian is True and knacki.is_vegan is True
+        assert comte.is_vegetarian is True and comte.is_vegan is False
+
+        for ing in (saumon, knacki, comte):
+            db.delete(ing)
+        db.commit()
+    finally:
+        db.close()
+
+
+

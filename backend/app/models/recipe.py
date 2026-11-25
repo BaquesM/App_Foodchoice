@@ -17,6 +17,20 @@ from backend.app.db.session import Base
 
 MONTH_COLUMNS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
+NON_VEGETARIAN_CATEGORIES = {"viande", "poisson"}
+NON_VEGAN_CATEGORIES = {"viande", "poisson", "produit laitier", "fromage"}
+NON_VEGETARIAN_ALLERGENS = {"poissons", "crustaces", "mollusques"}
+NON_VEGAN_ALLERGENS = {"lait", "oeufs", "poissons", "crustaces", "mollusques"}
+
+
+def infer_diets(category: str, allergen_names=()) -> tuple[bool, bool]:
+    """Infer (is_vegetarian, is_vegan) from an ingredient's category and allergen slugs."""
+    cat = (category or "").strip().lower()
+    allergens = set(allergen_names or ())
+    is_vegetarian = (cat not in NON_VEGETARIAN_CATEGORIES) and not (allergens & NON_VEGETARIAN_ALLERGENS)
+    is_vegan = (cat not in NON_VEGAN_CATEGORIES) and not (allergens & NON_VEGAN_ALLERGENS)
+    return is_vegetarian, is_vegan
+
 # Many-to-many link: an ingredient has 0..n allergens
 ingredient_allergens = Table(
     "ingredient_allergens",
@@ -67,12 +81,30 @@ class Ingredient(Base):
     category = Column(String(50), nullable=False)  # vegetable, fruit, meat, dairy, etc.
     needs_season_review = Column(Boolean, default=False, nullable=False)
 
-    # 1..1 seasonality row (12 booleans) and 0..n allergens (many-to-many)
+    # 1..1 seasonality row (12 booleans), 1..1 diet row, and 0..n allergens (many-to-many)
     season = relationship(
         "IngredientSeason", back_populates="ingredient", uselist=False,
         cascade="all, delete-orphan",
     )
+    diet = relationship(
+        "IngredientDiet", back_populates="ingredient", uselist=False,
+        cascade="all, delete-orphan",
+    )
     allergen_links = relationship("Allergen", secondary=ingredient_allergens, back_populates="ingredients")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.diet is None:
+            self.sync_diet()
+
+    def sync_diet(self) -> None:
+        """Recompute is_vegetarian and is_vegan from category and allergens."""
+        is_veg, is_vgn = infer_diets(self.category or "", self.allergens)
+        if self.diet is None:
+            self.diet = IngredientDiet(is_vegetarian=is_veg, is_vegan=is_vgn)
+        else:
+            self.diet.is_vegetarian = is_veg
+            self.diet.is_vegan = is_vgn
 
     @property
     def available_months(self) -> list[int]:
@@ -92,6 +124,20 @@ class Ingredient(Base):
     def allergens(self) -> list[str]:
         """Return the names of the allergens contained in this ingredient."""
         return sorted(a.name for a in self.allergen_links)
+
+    @property
+    def is_vegetarian(self) -> bool:
+        """Return whether this ingredient is vegetarian."""
+        if self.diet is None:
+            return infer_diets(self.category or "", self.allergens)[0]
+        return self.diet.is_vegetarian
+
+    @property
+    def is_vegan(self) -> bool:
+        """Return whether this ingredient is vegan."""
+        if self.diet is None:
+            return infer_diets(self.category or "", self.allergens)[1]
+        return self.diet.is_vegan
 
 
 class IngredientSeason(Base):
@@ -124,6 +170,17 @@ class IngredientSeason(Base):
         wanted = set(values)
         for i, col in enumerate(MONTH_COLUMNS, start=1):
             setattr(self, col, i in wanted)
+
+
+class IngredientDiet(Base):
+    """Dietary flags for an ingredient (1..1 with Ingredient)."""
+    __tablename__ = "ingredient_diets"
+
+    ingredient_id = Column(Integer, ForeignKey("ingredients.id", ondelete="CASCADE"), primary_key=True)
+    is_vegetarian = Column(Boolean, default=True, nullable=False)
+    is_vegan = Column(Boolean, default=True, nullable=False)
+
+    ingredient = relationship("Ingredient", back_populates="diet")
 
 
 class Allergen(Base):

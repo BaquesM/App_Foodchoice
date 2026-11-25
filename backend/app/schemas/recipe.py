@@ -11,6 +11,8 @@ class IngredientOut(BaseModel):
     category: str
     available_months: list[int]
     allergens: list[str] = []
+    is_vegetarian: bool = True
+    is_vegan: bool = True
     needs_season_review: bool = False
 
 

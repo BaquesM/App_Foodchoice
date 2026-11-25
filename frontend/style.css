@@ -2204,8 +2204,8 @@ body {
     width: 1.65rem;
     height: 1.65rem;
     font-size: 0.9rem;
-    background-color: #fff7ed;
-    border: 1px solid #fed7aa;
+    background-color: #fee2e2;
+    border: 1px solid #fca5a5;
     border-radius: var(--radius-full);
     cursor: default;
     user-select: none;
@@ -2214,7 +2214,7 @@ body {
 
 .allergen-icon-badge:hover {
     transform: translateY(-1px);
-    border-color: #f59e0b;
+    border-color: #ef4444;
 }
 
 .allergen-icon-badge::after {

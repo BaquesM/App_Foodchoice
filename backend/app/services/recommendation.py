@@ -47,6 +47,9 @@ class RecipeRecommendation:
     parent_recipe_title: Optional[str] = None
     has_alternatives: bool = False
     veto_reasons: list[str] = field(default_factory=list)
+    allergens: list[str] = field(default_factory=list)
+    is_vegetarian: bool = True
+    is_vegan: bool = True
     shared_with: list[str] = field(default_factory=list)
     shared_with_ids: list[int] = field(default_factory=list)
     ingredients: list[IngredientMatch] = field(default_factory=list)
@@ -134,12 +137,20 @@ def search_and_rank_recipes(
         all_recipe_ratings = []
         has_veto = False
         veto_reasons = []
+        recipe_allergens: set[str] = set()
+        recipe_is_vegetarian = True
+        recipe_is_vegan = True
         ingredient_matches: list[IngredientMatch] = []
 
         for ri in recipe.recipe_ingredients:
             ing = ri.ingredient
             if not ing:
                 continue
+            recipe_allergens.update(ing.allergens)
+            if not ing.is_vegetarian:
+                recipe_is_vegetarian = False
+            if not ing.is_vegan:
+                recipe_is_vegan = False
             weight = ri.importance  # 1, 2, or 3
             total_weight += weight
             scaled_qty = round(ri.quantity * scaling_ratio, 2)
@@ -238,6 +249,9 @@ def search_and_rank_recipes(
                 preference_score=pref_score,
                 has_veto=has_veto,
                 veto_reasons=veto_reasons,
+                allergens=sorted(recipe_allergens),
+                is_vegetarian=recipe_is_vegetarian,
+                is_vegan=recipe_is_vegan,
                 shared_with=shared_with_names,
                 shared_with_ids=shared_with_ids,
                 ingredients=ingredient_matches,

@@ -21,7 +21,17 @@ try {
 // Global application state
 const state = {
     allIngredients: [],
+    allAllergens: [],
     allAccounts: [],
+    accountRecipes: [],
+    myRecipesFilters: {
+        glutenFree: false,
+        lactoseFree: false,
+        vegetarian: false,
+        vegan: false,
+        inSeasonOnly: false,
+        excludedAllergens: new Set(),
+    },
     activeAccountId: null, // Default: null (Visiteur / Guest mode)
     currentUser: null,     // Currently authenticated user account object
     currentProfiles: [],
@@ -91,9 +101,10 @@ async function checkApiHealth() {
  */
 async function loadInitialData() {
     try {
-        const [accRes, ingRes] = await Promise.all([
+        const [accRes, ingRes, allRes] = await Promise.all([
             fetch("/api/accounts"),
-            fetch("/api/ingredients")
+            fetch("/api/ingredients"),
+            fetch("/api/allergens")
         ]);
 
         if (accRes.ok) {
@@ -105,6 +116,11 @@ async function loadInitialData() {
             state.allIngredients = await ingRes.json();
             renderIngredients();
             renderDatalist();
+        }
+
+        if (allRes.ok) {
+            state.allAllergens = await allRes.json();
+            renderAllergenFilterMenu();
         }
 
         // Load profiles for initial active account (if authenticated)
@@ -933,12 +949,8 @@ async function loadAccountRecipes() {
         try {
             const res = await fetch("/api/recipes/public");
             if (res.ok) {
-                const recipes = await res.json();
-                if (recipes.length === 0) {
-                    container.innerHTML = `<div class="empty-state">Aucune recette publique disponible pour le moment.</div>`;
-                } else {
-                    renderRecipeCards(recipes, "my-recipes-list", false);
-                }
+                state.accountRecipes = await res.json();
+                applyMyRecipesFilters();
             } else {
                 throw new Error(`HTTP ${res.status}`);
             }
@@ -960,12 +972,8 @@ async function loadAccountRecipes() {
     try {
         const res = await fetch(`/api/accounts/${state.activeAccountId}/recipes`);
         if (res.ok) {
-            const recipes = await res.json();
-            if (recipes.length === 0) {
-                container.innerHTML = `<div class="empty-state">Vous n'avez pas encore de recette enregistrée ou partagée. Cliquez sur « ➕ Créer une nouvelle recette » pour commencer !</div>`;
-            } else {
-                renderRecipeCards(recipes, "my-recipes-list", false);
-            }
+            state.accountRecipes = await res.json();
+            applyMyRecipesFilters();
         } else {
             throw new Error(`HTTP ${res.status}`);
         }
@@ -976,9 +984,157 @@ async function loadAccountRecipes() {
 }
 
 /**
+ * Populate the multi-select allergen dropdown checklist from state.allAllergens.
+ */
+function renderAllergenFilterMenu() {
+    const list = document.getElementById("allergen-checkbox-list");
+    if (!list) return;
+
+    list.innerHTML = "";
+    state.allAllergens.forEach((allergen) => {
+        const label = document.createElement("label");
+        label.className = "allergen-checkbox-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = allergen.name;
+        checkbox.checked = state.myRecipesFilters.excludedAllergens.has(allergen.name);
+        checkbox.addEventListener("change", () => {
+            if (checkbox.checked) {
+                state.myRecipesFilters.excludedAllergens.add(allergen.name);
+            } else {
+                state.myRecipesFilters.excludedAllergens.delete(allergen.name);
+            }
+            applyMyRecipesFilters();
+        });
+
+        const text = document.createElement("span");
+        text.textContent = allergen.label;
+
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        list.appendChild(label);
+    });
+}
+
+/**
+ * Filter state.accountRecipes according to active diet, allergen, and seasonality filters.
+ */
+function applyMyRecipesFilters() {
+    const container = document.getElementById("my-recipes-list");
+    if (!container) return;
+
+    const f = state.myRecipesFilters;
+
+    // Update allergen dropdown button badge & active state
+    const countSpan = document.getElementById("allergen-filter-count");
+    const allergenBtn = document.getElementById("btn-allergen-dropdown");
+    const excludedCount = f.excludedAllergens.size;
+    if (countSpan) {
+        countSpan.textContent = excludedCount > 0 ? `(${excludedCount})` : "";
+    }
+    if (allergenBtn) {
+        allergenBtn.classList.toggle("active", excludedCount > 0);
+    }
+
+    // Show or hide reset button
+    const hasActiveFilter =
+        f.glutenFree || f.lactoseFree || f.vegetarian || f.vegan || f.inSeasonOnly || excludedCount > 0;
+    const resetBtn = document.getElementById("btn-reset-recipe-filters");
+    if (resetBtn) {
+        resetBtn.style.display = hasActiveFilter ? "inline-flex" : "none";
+    }
+
+    // Handle empty base recipe list
+    if (state.accountRecipes.length === 0) {
+        container.innerHTML = state.activeAccountId
+            ? `<div class="empty-state">Vous n'avez pas encore de recette enregistrée ou partagée. Cliquez sur « ➕ Créer une nouvelle recette » pour commencer !</div>`
+            : `<div class="empty-state">Aucune recette publique disponible pour le moment.</div>`;
+        return;
+    }
+
+    const filtered = state.accountRecipes.filter((r) => {
+        const allergens = r.allergens || [];
+        if (f.glutenFree && allergens.includes("gluten")) return false;
+        if (f.lactoseFree && allergens.includes("lait")) return false;
+        if (f.vegetarian && r.is_vegetarian === false) return false;
+        if (f.vegan && r.is_vegan === false) return false;
+        if (f.inSeasonOnly && r.seasonality_score < 100) return false;
+        for (const slug of f.excludedAllergens) {
+            if (allergens.includes(slug)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-state">Aucune recette ne correspond aux filtres sélectionnés.</div>`;
+    } else {
+        renderRecipeCards(filtered, "my-recipes-list", false);
+    }
+}
+
+/**
+ * Bind click listeners for My Recipes / Visitor Recipes filter pills and allergen dropdown.
+ */
+function setupMyRecipesFilterListeners() {
+    document.querySelectorAll("[data-recipe-filter]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const key = btn.dataset.recipeFilter;
+            if (!key || !(key in state.myRecipesFilters)) return;
+            state.myRecipesFilters[key] = !state.myRecipesFilters[key];
+            btn.classList.toggle("active", state.myRecipesFilters[key]);
+            applyMyRecipesFilters();
+        });
+    });
+
+    const dropdown = document.getElementById("my-recipes-allergen-dropdown");
+    const dropdownBtn = document.getElementById("btn-allergen-dropdown");
+    const dropdownMenu = document.getElementById("allergen-dropdown-menu");
+
+    if (dropdownBtn && dropdownMenu) {
+        dropdownBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = dropdownMenu.style.display !== "none";
+            dropdownMenu.style.display = isOpen ? "none" : "block";
+            dropdownBtn.setAttribute("aria-expanded", String(!isOpen));
+        });
+
+        document.addEventListener("click", (e) => {
+            if (dropdown && !dropdown.contains(e.target) && dropdownMenu.style.display !== "none") {
+                dropdownMenu.style.display = "none";
+                dropdownBtn.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+
+    const resetBtn = document.getElementById("btn-reset-recipe-filters");
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            state.myRecipesFilters.glutenFree = false;
+            state.myRecipesFilters.lactoseFree = false;
+            state.myRecipesFilters.vegetarian = false;
+            state.myRecipesFilters.vegan = false;
+            state.myRecipesFilters.inSeasonOnly = false;
+            state.myRecipesFilters.excludedAllergens.clear();
+
+            document.querySelectorAll("[data-recipe-filter]").forEach((btn) => {
+                btn.classList.remove("active");
+            });
+            document.querySelectorAll("#allergen-checkbox-list input[type='checkbox']").forEach((cb) => {
+                cb.checked = false;
+            });
+
+            applyMyRecipesFilters();
+        });
+    }
+}
+
+/**
  * Setup DOM event listeners.
  */
 function setupEventListeners() {
+    setupMyRecipesFilterListeners();
+
     // Account switch
     const accountSelect = document.getElementById("account-select");
     if (accountSelect) {

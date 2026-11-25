@@ -152,6 +152,40 @@
             <!-- Notifications banner for modified shared recipes -->
             <div id="shared-recipe-notifications" class="shared-notifications-container" style="display: none;"></div>
 
+            <!-- Recipe filters bar (shared by My Recipes & Visitor Recipes) -->
+            <div id="my-recipes-filters" class="recipe-filters-bar">
+                <button type="button" class="recipe-filter-pill" data-recipe-filter="glutenFree">
+                    🌾 Sans gluten
+                </button>
+                <button type="button" class="recipe-filter-pill" data-recipe-filter="lactoseFree">
+                    🥛 Sans lactose
+                </button>
+                <button type="button" class="recipe-filter-pill" data-recipe-filter="vegetarian">
+                    🥗 Végétarien
+                </button>
+                <button type="button" class="recipe-filter-pill" data-recipe-filter="vegan">
+                    🌱 Végan
+                </button>
+
+                <div class="allergen-dropdown" id="my-recipes-allergen-dropdown">
+                    <button type="button" class="recipe-filter-pill allergen-dropdown-btn" id="btn-allergen-dropdown" aria-expanded="false">
+                        ⚠️ Allergènes <span id="allergen-filter-count"></span> ▾
+                    </button>
+                    <div class="allergen-dropdown-menu" id="allergen-dropdown-menu" style="display: none;">
+                        <div class="allergen-dropdown-header">Exclure les allergènes :</div>
+                        <div id="allergen-checkbox-list" class="allergen-checkbox-list"></div>
+                    </div>
+                </div>
+
+                <button type="button" class="recipe-filter-pill" data-recipe-filter="inSeasonOnly">
+                    🌿 De saison (100%)
+                </button>
+
+                <button type="button" id="btn-reset-recipe-filters" class="recipe-filter-reset" style="display: none;">
+                    ✕ Réinitialiser
+                </button>
+            </div>
+
             <!-- List of recipes for this account -->
             <div id="my-recipes-list" class="recipe-cards-container">
                 <div class="loading-state">Chargement de vos recettes...</div>

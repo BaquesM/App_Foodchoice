@@ -832,4 +832,33 @@ def test_ingredient_diets_auto_inference():
         db.close()
 
 
+def test_allergens_endpoint_and_recipe_diet_fields():
+    """Verify GET /api/allergens returns EU 14 allergens and recipes expose allergens & diet flags."""
+    allergens_res = client.get("/api/allergens")
+    assert allergens_res.status_code == 200
+    allergens = allergens_res.json()
+    assert len(allergens) == 14
+    slugs = {a["name"] for a in allergens}
+    assert {"gluten", "lait", "oeufs", "fruits_a_coque"}.issubset(slugs)
+
+    accounts = client.get("/api/accounts").json()
+    marion = next(a for a in accounts if a["username"] == "marion")
+    recipes = client.get(f"/api/accounts/{marion['id']}/recipes").json()
+    by_title = {r["title"]: r for r in recipes}
+
+    omelette = by_title["Omelette aux fines herbes"]
+    assert omelette["is_vegetarian"] is True
+    assert omelette["is_vegan"] is False
+    assert "oeufs" in omelette["allergens"]
+    assert "lait" in omelette["allergens"]
+    assert "gluten" not in omelette["allergens"]
+
+    carbo = by_title["Pâtes Carbonara"]
+    assert carbo["is_vegetarian"] is False
+    assert carbo["is_vegan"] is False
+    assert "gluten" in carbo["allergens"]
+    assert "lait" in carbo["allergens"]
+
+
+
 

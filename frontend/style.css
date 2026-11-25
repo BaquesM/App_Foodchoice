@@ -2072,6 +2072,122 @@ body {
     padding: 1.25rem 0;
 }
 
+/* My Recipes & Visitor Recipes filter bar */
+.recipe-filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.recipe-filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.recipe-filter-pill:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-light);
+}
+
+.recipe-filter-pill.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.allergen-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.allergen-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 40;
+    min-width: 240px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 0.5rem;
+}
+
+.allergen-dropdown-header {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0.25rem 0.4rem 0.45rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0.35rem;
+}
+
+.allergen-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.allergen-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-color);
+    cursor: pointer;
+    user-select: none;
+}
+
+.allergen-checkbox-item:hover {
+    background-color: var(--bg-color);
+}
+
+.allergen-checkbox-item input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+.recipe-filter-reset {
+    margin-left: auto;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-full);
+    border: 1px solid #fecaca;
+    background-color: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.recipe-filter-reset:hover {
+    background-color: #fee2e2;
+}
+
 /* Responsive adjustments */
 @media (max-width: 650px) {
     .controls-grid {

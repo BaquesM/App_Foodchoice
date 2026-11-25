@@ -2,6 +2,15 @@
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
 
+class AllergenOut(BaseModel):
+    """Allergen reference output schema."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    label: str
+
+
 class IngredientOut(BaseModel):
     """Ingredient output schema."""
     model_config = ConfigDict(from_attributes=True)
@@ -150,6 +159,9 @@ class RecipeRecommendationOut(BaseModel):
     preference_score: float
     has_veto: bool
     veto_reasons: list[str]
+    allergens: list[str] = Field(default_factory=list)
+    is_vegetarian: bool = True
+    is_vegan: bool = True
     shared_with: list[str] = Field(default_factory=list, description="Names of accounts with whom recipe is shared")
     shared_with_ids: list[int] = Field(default_factory=list, description="IDs of accounts with whom recipe is shared")
     ingredients: list[IngredientMatchOut]

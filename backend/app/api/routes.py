@@ -12,6 +12,7 @@ from backend.app.models.recipe import (
     UserAccount,
     HouseholdProfile,
     Ingredient,
+    Allergen,
     Recipe,
     RecipeIngredient,
     RecipeShare,
@@ -19,6 +20,7 @@ from backend.app.models.recipe import (
     RecipeUpdateNotification,
 )
 from backend.app.schemas.recipe import (
+    AllergenOut,
     IngredientOut,
     UserAccountOut,
     HouseholdProfileCreate,
@@ -226,6 +228,12 @@ def list_account_recipes(account_id: int, db: Session = Depends(get_db)):
 def list_ingredients(db: Session = Depends(get_db)):
     """Retrieve all ingredients sorted by category and name."""
     return db.query(Ingredient).order_by(Ingredient.category, Ingredient.name).all()
+
+
+@router.get("/allergens", response_model=list[AllergenOut])
+def list_allergens(db: Session = Depends(get_db)):
+    """Retrieve all reference allergens sorted alphabetically by label."""
+    return db.query(Allergen).order_by(Allergen.label).all()
 
 
 @router.post("/recipes/search", response_model=list[RecipeRecommendationOut])

@@ -1407,6 +1407,7 @@ function addIngredientRow(data = null) {
         { value: "herbe/épice", label: "🌿 Herbe / Épice" },
         { value: "condiment", label: "🧂 Condiment" },
         { value: "produit sucré", label: "🍯 Produit sucré" },
+        { value: "produit végétal", label: "🌱 Produit végétal" },
         { value: "autre", label: "📦 Autre" },
     ];
     categoriesList.forEach((c) => {
@@ -2645,6 +2646,7 @@ function renderSeasonCalendar() {
         "herbe/épice": "🌿",
         "condiment": "🧂",
         "produit sucré": "🍯",
+        "produit végétal": "🌱",
         "autre": "📦"
     };
 

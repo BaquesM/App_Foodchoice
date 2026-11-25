@@ -1394,14 +1394,19 @@ function addIngredientRow(data = null) {
 
     const categoriesList = [
         { value: "légume", label: "🥦 Légume" },
+        { value: "champignon", label: "🍄 Champignon" },
+        { value: "fruit", label: "🍎 Fruit" },
+        { value: "féculent", label: "🍝 Féculent" },
+        { value: "légumineuse", label: "🫘 Légumineuse" },
         { value: "protéine", label: "🥚 Protéine" },
         { value: "viande", label: "🥩 Viande" },
         { value: "poisson", label: "🐟 Poisson" },
-        { value: "féculent", label: "🍝 Féculent" },
-        { value: "produit laitier", label: "🧀 Produit laitier" },
-        { value: "fruit", label: "🍎 Fruit" },
+        { value: "produit laitier", label: "🥛 Produit laitier" },
+        { value: "fromage", label: "🧀 Fromage" },
         { value: "matière grasse", label: "🧈 Matière grasse" },
         { value: "herbe/épice", label: "🌿 Herbe / Épice" },
+        { value: "condiment", label: "🧂 Condiment" },
+        { value: "produit sucré", label: "🍯 Produit sucré" },
         { value: "autre", label: "📦 Autre" },
     ];
     categoriesList.forEach((c) => {
@@ -2627,14 +2632,19 @@ function renderSeasonCalendar() {
 
     const categoryIcons = {
         "légume": "🥦",
+        "champignon": "🍄",
         "fruit": "🍎",
+        "féculent": "🍝",
+        "légumineuse": "🫘",
         "protéine": "🥚",
         "viande": "🥩",
         "poisson": "🐟",
-        "féculent": "🍝",
-        "produit laitier": "🧀",
+        "produit laitier": "🥛",
+        "fromage": "🧀",
         "matière grasse": "🧈",
         "herbe/épice": "🌿",
+        "condiment": "🧂",
+        "produit sucré": "🍯",
         "autre": "📦"
     };
 

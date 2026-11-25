@@ -15,8 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 CATEGORIES = [
-    "légume", "fruit", "féculent", "protéine", "viande", "poisson",
-    "produit laitier", "matière grasse", "herbe/épice", "autre",
+    "légume", "champignon", "fruit", "féculent", "légumineuse",
+    "protéine", "viande", "poisson", "produit laitier", "fromage",
+    "matière grasse", "herbe/épice", "condiment", "produit sucré", "autre",
 ]
 MONTH_NAMES = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",

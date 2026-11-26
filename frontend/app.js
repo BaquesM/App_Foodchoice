@@ -49,7 +49,7 @@ const state = {
     seasonCalFilterSeason: "all",
     seasonCalFilterMonth: "all",
     seasonCalActiveCurrentMonthOnly: false,
-    seasonCalIncludeYearRound: true
+    seasonCalIncludeYearRound: false
 };
 
 // Initialize on DOM ready

@@ -2089,6 +2089,7 @@ body {
 .recipe-filter-pill {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.35rem;
     padding: 0.4rem 0.85rem;
     border-radius: var(--radius-full);
@@ -2099,6 +2100,16 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.recipe-filters-bar > .recipe-filter-pill,
+.recipe-filters-bar > .allergen-dropdown {
+    flex: 1 1 auto;
+}
+
+.allergen-dropdown-btn {
+    width: 100%;
 }
 
 .recipe-filter-pill:hover {

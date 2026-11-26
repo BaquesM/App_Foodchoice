@@ -35,21 +35,21 @@ def test_list_accounts_and_profiles():
     assert response.status_code == 200
     accounts = response.json()
     names = [a["display_name"] for a in accounts]
-    assert "Marion" in names
-    assert "Lisa" in names
+    assert "Curie" in names
+    assert "Einstein" in names
 
-    marion_acc = next(a for a in accounts if a["username"] == "marion")
+    marion_acc = next(a for a in accounts if a["username"] == "curie")
     prof_res = client.get(f"/api/accounts/{marion_acc['id']}/profiles")
     assert prof_res.status_code == 200
     profiles = prof_res.json()
     p_names = [p["name"] for p in profiles]
-    assert "Marion" in p_names
+    assert "Curie" in p_names
     assert "Thomas" in p_names
 
 def test_search_recipes_with_account():
     """Ensure /api/recipes/search returns ranked recipes for an account."""
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
     ingredients = client.get("/api/ingredients").json()
     oeuf_id = next(i["id"] for i in ingredients if i["name"] == "Oeuf")
     beurre_id = next(i["id"] for i in ingredients if i["name"] == "Beurre")
@@ -76,8 +76,8 @@ def test_create_and_share_recipe():
     db.commit()
 
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-    lisa = next(a for a in accounts if a["username"] == "lisa")
+    marion = next(a for a in accounts if a["username"] == "curie")
+    lisa = next(a for a in accounts if a["username"] == "einstein")
     ingredients = client.get("/api/ingredients").json()
     courgette_id = next(i["id"] for i in ingredients if i["name"] == "Courgette")
 
@@ -118,9 +118,9 @@ def test_create_and_share_recipe():
 def test_preference_submission():
     """Ensure a household profile can record an ingredient rating."""
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
     profiles = client.get(f"/api/accounts/{marion['id']}/profiles").json()
-    marion_profile = next(p for p in profiles if p["name"] == "Marion")
+    marion_profile = next(p for p in profiles if p["name"] == "Curie")
     ingredients = client.get("/api/ingredients").json()
     courgette_id = next(i["id"] for i in ingredients if i["name"] == "Courgette")
 
@@ -158,13 +158,13 @@ def test_list_public_recipes():
 def test_shared_with_in_recipe_recommendation():
     """Ensure recipes have shared_with list populated with recipient display names."""
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
     res = client.get(f"/api/accounts/{marion['id']}/recipes")
     assert res.status_code == 200
     recipes = res.json()
     omelette = next((r for r in recipes if r["title"] == "Omelette aux fines herbes"), None)
     assert omelette is not None
-    assert "Lisa" in omelette["shared_with"]
+    assert "Einstein" in omelette["shared_with"]
 
 
 def test_create_and_get_household_profile():
@@ -173,7 +173,7 @@ def test_create_and_get_household_profile():
     from backend.app.models.recipe import HouseholdProfile
 
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
 
     # Clean up Paul if leftover from previous test run
     db = SessionLocal()
@@ -209,7 +209,7 @@ def test_create_recipe_with_new_ingredient_and_category():
     from backend.app.models.recipe import Ingredient, Recipe
 
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
 
     payload = {
         "account_id": marion["id"],
@@ -364,7 +364,7 @@ def test_alternative_recipe_creation_and_search():
     """
     db = SessionLocal()
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
 
     # 1. Create original recipe
     orig_payload = {
@@ -463,8 +463,8 @@ def test_update_recipe_by_author_and_forbidden_for_others():
     """Ensure an author can update their recipe (PUT /api/recipes/{id}) and non-authors receive 403."""
     db = SessionLocal()
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-    lisa = next(a for a in accounts if a["username"] == "lisa")
+    marion = next(a for a in accounts if a["username"] == "curie")
+    lisa = next(a for a in accounts if a["username"] == "einstein")
 
     # Clean pre-existing test recipe
     for old in db.query(Recipe).filter_by(title="Tarte aux pommes rustique").all():
@@ -529,7 +529,7 @@ def test_duplicate_recipe_title_rejected():
     """Ensure duplicate recipe titles for the same account are rejected with 400 Bad Request."""
     db = SessionLocal()
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
 
     for old in db.query(Recipe).filter_by(title="Soupe à l'oignon gratinée").all():
         db.delete(old)
@@ -568,8 +568,8 @@ def test_create_alternative_to_shared_recipe():
     """Ensure a user can create an alternative recipe referencing a recipe shared by another user."""
     db = SessionLocal()
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-    lisa = next(a for a in accounts if a["username"] == "lisa")
+    marion = next(a for a in accounts if a["username"] == "curie")
+    lisa = next(a for a in accounts if a["username"] == "einstein")
 
     for old in db.query(Recipe).filter_by(title="Risotto crémeux de Lisa").all():
         db.delete(old)
@@ -681,8 +681,8 @@ def test_shared_recipe_update_notification_and_response():
     """Ensure updating a shared recipe notifies recipient, and accept/reject works."""
     db = SessionLocal()
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
-    lisa = next(a for a in accounts if a["username"] == "lisa")
+    marion = next(a for a in accounts if a["username"] == "curie")
+    lisa = next(a for a in accounts if a["username"] == "einstein")
 
     for old in db.query(Recipe).filter(Recipe.title.like("%Curry doux%")).all():
         db.delete(old)
@@ -757,13 +757,13 @@ def test_sync_supabase_user():
     # 1. Sync existing Marion test account
     sync_res = client.post("/api/auth/sync", json={
         "supabase_uid": "sup-uid-marion-12345",
-        "email": "marion@test.fr",
-        "display_name": "Marion"
+        "email": "curie@test.fr",
+        "display_name": "Curie"
     })
     assert sync_res.status_code == 200
     m_data = sync_res.json()
-    assert m_data["email"] == "marion@test.fr"
-    assert m_data["username"] == "marion"
+    assert m_data["email"] == "curie@test.fr"
+    assert m_data["username"] == "curie"
 
     # Verify UID was stored
     acc_db = db.query(UserAccount).filter_by(id=m_data["id"]).first()
@@ -842,7 +842,7 @@ def test_allergens_endpoint_and_recipe_diet_fields():
     assert {"gluten", "lait", "oeufs", "fruits_a_coque"}.issubset(slugs)
 
     accounts = client.get("/api/accounts").json()
-    marion = next(a for a in accounts if a["username"] == "marion")
+    marion = next(a for a in accounts if a["username"] == "curie")
     recipes = client.get(f"/api/accounts/{marion['id']}/recipes").json()
     by_title = {r["title"]: r for r in recipes}
 

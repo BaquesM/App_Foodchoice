@@ -41,7 +41,7 @@ ingredient_allergens = Table(
 
 
 class UserAccount(Base):
-    """User account representing the person who logs in (e.g. Marion, Lisa, Odile)."""
+    """User account representing the person who logs in (e.g. Curie, Einstein, Newton)."""
     __tablename__ = "user_accounts"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -73,35 +73,35 @@ def init_db(reset: bool = False):
     try:
         # If accounts already exist, ensure default test emails are populated and return
         if not reset and db.query(UserAccount).first():
-            m = db.query(UserAccount).filter_by(username="marion").first()
-            if m and not m.email:
-                m.email = "marion@test.fr"
-            l = db.query(UserAccount).filter_by(username="lisa").first()
-            if l and not l.email:
-                l.email = "lisa@test.fr"
-            o = db.query(UserAccount).filter_by(username="odile").first()
-            if o and not o.email:
-                o.email = "odile@test.fr"
+            c = db.query(UserAccount).filter_by(username="curie").first()
+            if c and not c.email:
+                c.email = "curie@test.fr"
+            e = db.query(UserAccount).filter_by(username="einstein").first()
+            if e and not e.email:
+                e.email = "einstein@test.fr"
+            n = db.query(UserAccount).filter_by(username="newton").first()
+            if n and not n.email:
+                n.email = "newton@test.fr"
             db.commit()
             return
 
         # 1. Accounts
-        acc_marion = UserAccount(username="marion", display_name="Marion", email="marion@test.fr")
-        acc_lisa = UserAccount(username="lisa", display_name="Lisa", email="lisa@test.fr")
-        acc_odile = UserAccount(username="odile", display_name="Odile", email="odile@test.fr")
-        db.add_all([acc_marion, acc_lisa, acc_odile])
+        acc_curie = UserAccount(username="curie", display_name="Curie", email="curie@test.fr")
+        acc_einstein = UserAccount(username="einstein", display_name="Einstein", email="einstein@test.fr")
+        acc_newton = UserAccount(username="newton", display_name="Newton", email="newton@test.fr")
+        db.add_all([acc_curie, acc_einstein, acc_newton])
         db.flush()
 
         # 2. Household profiles (Dining guests)
-        p_marion = HouseholdProfile(account_id=acc_marion.id, name="Marion")
-        p_thomas = HouseholdProfile(account_id=acc_marion.id, name="Thomas")
+        p_curie = HouseholdProfile(account_id=acc_curie.id, name="Curie")
+        p_thomas = HouseholdProfile(account_id=acc_curie.id, name="Thomas")
 
-        p_lisa = HouseholdProfile(account_id=acc_lisa.id, name="Lisa")
-        p_lucas = HouseholdProfile(account_id=acc_lisa.id, name="Lucas")
+        p_einstein = HouseholdProfile(account_id=acc_einstein.id, name="Einstein")
+        p_lucas = HouseholdProfile(account_id=acc_einstein.id, name="Lucas")
 
-        p_odile = HouseholdProfile(account_id=acc_odile.id, name="Odile")
+        p_newton = HouseholdProfile(account_id=acc_newton.id, name="Newton")
 
-        db.add_all([p_marion, p_thomas, p_lisa, p_lucas, p_odile])
+        db.add_all([p_curie, p_thomas, p_einstein, p_lucas, p_newton])
         db.flush()
 
         # 3. Base ingredients
@@ -134,9 +134,9 @@ def init_db(reset: bool = False):
         db.flush()
 
         # 5. Recipes with Visibility & Ownership
-        # Recipe 1: Herb Omelet - Marion's private recipe
+        # Recipe 1: Herb Omelet - Curie's private recipe
         r1 = Recipe(
-            account_id=acc_marion.id,
+            account_id=acc_curie.id,
             title="Omelette aux fines herbes",
             instructions="Battre les oeufs avec sel et poivre. Chauffer le beurre dans une poêle. Verser les oeufs, parsemer de ciboulette ciselée et plier l'omelette.",
             prep_time_minutes=5,
@@ -154,13 +154,13 @@ def init_db(reset: bool = False):
             RecipeIngredient(recipe_id=r1.id, ingredient_id=ciboulette.id, quantity=10, unit="g", importance=1),
         ])
 
-        # Option B share: Marion shares r1 with Lisa
-        share_marion_to_lisa = RecipeShare(recipe_id=r1.id, shared_with_account_id=acc_lisa.id)
-        db.add(share_marion_to_lisa)
+        # Option B share: Curie shares r1 with Einstein
+        share_curie_to_einstein = RecipeShare(recipe_id=r1.id, shared_with_account_id=acc_einstein.id)
+        db.add(share_curie_to_einstein)
 
-        # Recipe 2: Pasta Carbonara - Marion's PUBLIC recipe (Option A: accessible to everyone, including guests)
+        # Recipe 2: Pasta Carbonara - Curie's PUBLIC recipe (Option A: accessible to everyone, including guests)
         r2 = Recipe(
-            account_id=acc_marion.id,
+            account_id=acc_curie.id,
             title="Pâtes Carbonara",
             instructions="Cuire les pâtes al dente. Dorer les lardons à sec. Mélanger les oeufs battus avec le parmesan. Hors du feu, mélanger pâtes, lardons et crème d'oeuf/parmesan.",
             prep_time_minutes=10,
@@ -179,16 +179,16 @@ def init_db(reset: bool = False):
             RecipeIngredient(recipe_id=r2.id, ingredient_id=parmesan.id, quantity=40, unit="g", importance=2),
         ])
 
-        # Recipe 3: Tomato & Mozzarella Salad - Lisa's PRIVATE recipe, shared SPECIFICALLY with Marion (Option B)
+        # Recipe 3: Tomato & Mozzarella Salad - Einstein's PRIVATE recipe, shared SPECIFICALLY with Curie (Option B)
         r3 = Recipe(
-            account_id=acc_lisa.id,
+            account_id=acc_einstein.id,
             title="Salade Tomate Mozzarella",
             instructions="Couper les tomates et la mozzarella en rondelles régulières. Disposer en alternant. Arroser d'un filet d'huile d'olive, saler et poivrer.",
             prep_time_minutes=10,
             cook_time_minutes=0,
             base_servings=2,
             visibility="private",
-            share_token="salade-lisa-token",
+            share_token="salade-einstein-token",
         )
         db.add(r3)
         db.flush()
@@ -199,20 +199,20 @@ def init_db(reset: bool = False):
             RecipeIngredient(recipe_id=r3.id, ingredient_id=huile_olive.id, quantity=15, unit="ml", importance=2),
         ])
 
-        # Option B share: Lisa shares r3 with Marion's account
-        share_lisa_to_marion = RecipeShare(recipe_id=r3.id, shared_with_account_id=acc_marion.id)
-        db.add(share_lisa_to_marion)
+        # Option B share: Einstein shares r3 with Curie's account
+        share_einstein_to_curie = RecipeShare(recipe_id=r3.id, shared_with_account_id=acc_curie.id)
+        db.add(share_einstein_to_curie)
 
-        # Recipe 4: Odile's PUBLIC recipe - Ratatouille provençale (Option A test)
+        # Recipe 4: Newton's PUBLIC recipe - Ratatouille provençale (Option A test)
         r4 = Recipe(
-            account_id=acc_odile.id,
-            title="Ratatouille d'Odile",
+            account_id=acc_newton.id,
+            title="Ratatouille de Newton",
             instructions="Couper courgettes, tomates et oignons en dés. Faire revenir les oignons dans l'huile d'olive, puis ajouter les courgettes et tomates. Laisser mijoter 35 min et parsemer de persil.",
             prep_time_minutes=20,
             cook_time_minutes=35,
             base_servings=4,
             visibility="public",
-            share_token="ratatouille-odile-token",
+            share_token="ratatouille-newton-token",
         )
         db.add(r4)
         db.flush()
@@ -225,16 +225,16 @@ def init_db(reset: bool = False):
             RecipeIngredient(recipe_id=r4.id, ingredient_id=persil.id, quantity=10, unit="g", importance=1),
         ])
 
-        # Recipe 5: Lisa's PUBLIC recipe - Poêlée campagnarde aux oeufs (Option A test with eggs)
+        # Recipe 5: Einstein's PUBLIC recipe - Poêlée campagnarde aux oeufs (Option A test with eggs)
         r5 = Recipe(
-            account_id=acc_lisa.id,
+            account_id=acc_einstein.id,
             title="Poêlée campagnarde aux oeufs",
             instructions="Faire dorer les lardons et l'oignon émincé à la poêle. Casser les oeufs directement dessus, saler, poivrer et laisser cuire jusqu'à ce que les blancs soient pris.",
             prep_time_minutes=5,
             cook_time_minutes=10,
             base_servings=2,
             visibility="public",
-            share_token="poelee-lisa-token",
+            share_token="poelee-einstein-token",
         )
         db.add(r5)
         db.flush()
@@ -248,14 +248,14 @@ def init_db(reset: bool = False):
 
         # 6. Household preferences (isolated per profile)
         db.add_all([
-            # Marion's household
-            UserIngredientPreference(profile_id=p_marion.id, ingredient_id=mozzarella.id, rating=2),
-            UserIngredientPreference(profile_id=p_marion.id, ingredient_id=ciboulette.id, rating=-1),
+            # Curie's household
+            UserIngredientPreference(profile_id=p_curie.id, ingredient_id=mozzarella.id, rating=2),
+            UserIngredientPreference(profile_id=p_curie.id, ingredient_id=ciboulette.id, rating=-1),
             UserIngredientPreference(profile_id=p_thomas.id, ingredient_id=lardons.id, rating=2),
             UserIngredientPreference(profile_id=p_thomas.id, ingredient_id=tomate.id, rating=-2),
 
-            # Lisa's household (separate opinions!)
-            UserIngredientPreference(profile_id=p_lisa.id, ingredient_id=courgette.id, rating=2),
+            # Einstein's household (separate opinions!)
+            UserIngredientPreference(profile_id=p_einstein.id, ingredient_id=courgette.id, rating=2),
             UserIngredientPreference(profile_id=p_lucas.id, ingredient_id=oignon.id, rating=-2),
         ])
 

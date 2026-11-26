@@ -102,7 +102,7 @@ def sync_supabase_user(payload: AuthSyncRequest, db: Session = Depends(get_db)):
 
 @router.get("/accounts", response_model=list[UserAccountOut])
 def list_accounts(db: Session = Depends(get_db)):
-    """Retrieve all user accounts (e.g. Marion, Lisa, Odile)."""
+    """Retrieve all user accounts (e.g. Curie, Einstein, Newton)."""
     return db.query(UserAccount).order_by(UserAccount.display_name).all()
 
 

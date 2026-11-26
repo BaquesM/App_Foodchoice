@@ -2248,6 +2248,29 @@ body {
     opacity: 1;
 }
 
+/* Freezable badge in top-right of recipe cards and detail header */
+.recipe-card-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.pill-freezable {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.22rem 0.65rem;
+    border-radius: var(--radius-full);
+    background-color: #e0f2fe;
+    border: 1px solid #7dd3fc;
+    color: #0369a1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 /* Responsive adjustments */
 @media (max-width: 650px) {
     .controls-grid {

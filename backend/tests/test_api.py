@@ -879,6 +879,44 @@ def test_account_recipes_veto_only_when_profile_selected():
     assert any("Thomas déteste Tomate" in reason for reason in salade_thomas["veto_reasons"])
 
 
+def test_recipe_freezable_flag():
+    """Verify is_freezable can be set on recipe creation, persisted, and updated."""
+    accounts = client.get("/api/accounts").json()
+    curie = next(a for a in accounts if a["username"] == "curie")
+
+    payload = {
+        "account_id": curie["id"],
+        "title": "Soupe test congélable",
+        "instructions": "Cuire et mixer les légumes.",
+        "prep_time_minutes": 10,
+        "cook_time_minutes": 20,
+        "base_servings": 4,
+        "is_freezable": True,
+        "visibility": "private",
+        "ingredients": [
+            {"name": "Courgette", "category": "légume", "quantity": 2, "unit": "pièce", "importance": 3}
+        ],
+    }
+    res = client.post("/api/recipes", json=payload)
+    assert res.status_code == 201
+    created = res.json()
+    assert created["is_freezable"] is True
+
+    # Update to False
+    upd = client.put(f"/api/recipes/{created['recipe_id']}", json={**payload, "is_freezable": False})
+    assert upd.status_code == 200
+    assert upd.json()["is_freezable"] is False
+
+    # Cleanup
+    db = SessionLocal()
+    rec = db.query(Recipe).filter_by(id=created["recipe_id"]).first()
+    if rec:
+        db.delete(rec)
+        db.commit()
+    db.close()
+
+
+
 
 
 

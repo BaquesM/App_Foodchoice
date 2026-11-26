@@ -375,6 +375,7 @@ def create_recipe(payload: RecipeCreate, db: Session = Depends(get_db)):
         prep_time_minutes=payload.prep_time_minutes,
         cook_time_minutes=payload.cook_time_minutes,
         base_servings=payload.base_servings,
+        is_freezable=payload.is_freezable,
         visibility=payload.visibility,
         parent_recipe_id=payload.parent_recipe_id,
     )
@@ -474,6 +475,7 @@ def update_recipe(recipe_id: int, payload: RecipeUpdate, db: Session = Depends(g
     recipe.prep_time_minutes = payload.prep_time_minutes
     recipe.cook_time_minutes = payload.cook_time_minutes
     recipe.base_servings = payload.base_servings
+    recipe.is_freezable = payload.is_freezable
     recipe.visibility = payload.visibility
     recipe.parent_recipe_id = payload.parent_recipe_id
 

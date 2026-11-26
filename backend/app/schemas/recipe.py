@@ -99,6 +99,7 @@ class RecipeCreate(BaseModel):
     prep_time_minutes: int = Field(default=15, ge=0)
     cook_time_minutes: int = Field(default=20, ge=0)
     base_servings: int = Field(default=4, ge=1)
+    is_freezable: bool = Field(default=False, description="Whether the recipe can be frozen")
     visibility: str = Field(default="private", pattern="^(private|public)$")
     parent_recipe_id: Optional[int] = Field(default=None, description="Optional ID of original recipe if this is an alternative variation")
     ingredients: list[RecipeIngredientCreate] = Field(..., min_length=1)
@@ -146,6 +147,7 @@ class RecipeRecommendationOut(BaseModel):
     prep_time_minutes: int
     cook_time_minutes: int
     servings: int
+    is_freezable: bool = False
     visibility: str
     share_token: str
     author_name: str

@@ -205,6 +205,7 @@ class Recipe(Base):
     prep_time_minutes = Column(Integer, default=15)
     cook_time_minutes = Column(Integer, default=20)
     base_servings = Column(Integer, default=4)
+    is_freezable = Column(Boolean, default=False, nullable=False)
 
     # Visibility: "private" (only author + explicitly shared) or "public" (open to everyone including guests)
     visibility = Column(String(20), default="private", nullable=False)

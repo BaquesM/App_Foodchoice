@@ -50,6 +50,7 @@ class RecipeRecommendation:
     allergens: list[str] = field(default_factory=list)
     is_vegetarian: bool = True
     is_vegan: bool = True
+    is_freezable: bool = False
     shared_with: list[str] = field(default_factory=list)
     shared_with_ids: list[int] = field(default_factory=list)
     ingredients: list[IngredientMatch] = field(default_factory=list)
@@ -252,6 +253,7 @@ def search_and_rank_recipes(
                 allergens=sorted(recipe_allergens),
                 is_vegetarian=recipe_is_vegetarian,
                 is_vegan=recipe_is_vegan,
+                is_freezable=bool(recipe.is_freezable),
                 shared_with=shared_with_names,
                 shared_with_ids=shared_with_ids,
                 ingredients=ingredient_matches,

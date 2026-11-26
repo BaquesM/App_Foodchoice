@@ -1997,6 +1997,8 @@ async function openEditRecipeForm(rec) {
     if (titleInput) titleInput.value = rec.title;
     const visInput = document.getElementById("new-recipe-visibility");
     if (visInput) visInput.value = rec.visibility;
+    const freezableInput = document.getElementById("new-recipe-freezable");
+    if (freezableInput) freezableInput.value = rec.is_freezable ? "true" : "false";
     const prepInput = document.getElementById("new-recipe-prep");
     if (prepInput) prepInput.value = rec.prep_time_minutes;
     const cookInput = document.getElementById("new-recipe-cook");
@@ -2066,6 +2068,7 @@ async function handleCreateRecipeSubmit(e) {
 
     const title = document.getElementById("new-recipe-title").value.trim();
     const visibility = document.getElementById("new-recipe-visibility").value;
+    const isFreezable = document.getElementById("new-recipe-freezable")?.value === "true";
     const prep = parseInt(document.getElementById("new-recipe-prep").value, 10) || 15;
     const cook = parseInt(document.getElementById("new-recipe-cook").value, 10) || 20;
     const servings = parseInt(document.getElementById("new-recipe-servings").value, 10) || 4;
@@ -2162,6 +2165,7 @@ async function handleCreateRecipeSubmit(e) {
         prep_time_minutes: prep,
         cook_time_minutes: cook,
         base_servings: servings,
+        is_freezable: isFreezable,
         visibility: visibility,
         parent_recipe_id: parentRecipeId,
         ingredients: ingredients
@@ -2530,6 +2534,12 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
         actionsRow += `</div>`;
 
         const allergenIconsHtml = renderRecipeAllergenIcons(rec.allergens);
+        const freezablePillHtml = rec.is_freezable
+            ? `<span class="pill-freezable">❄️ Congélable</span>`
+            : "";
+        const rightHeaderHtml = (freezablePillHtml || scorePillHtml)
+            ? `<div class="recipe-card-header-right">${freezablePillHtml}${scorePillHtml}</div>`
+            : "";
 
         card.innerHTML = `
             ${vetoHtml}
@@ -2548,7 +2558,7 @@ function renderRecipeCards(recipes, targetContainerId = "recipes-list", showMatc
                         ${seasonBadge}
                     </div>
                 </div>
-                ${scorePillHtml}
+                ${rightHeaderHtml}
             </div>
 
             <div class="recipe-ingredients-list">
@@ -2852,6 +2862,13 @@ function renderRecipeDetailContent(rec) {
 
     actionsRow += `</div>`;
 
+    const detailFreezablePillHtml = rec.is_freezable
+        ? `<span class="pill-freezable">❄️ Congélable</span>`
+        : "";
+    const detailRightHeaderHtml = (detailFreezablePillHtml || scorePillHtml)
+        ? `<div class="recipe-card-header-right">${detailFreezablePillHtml}${scorePillHtml}</div>`
+        : "";
+
     container.innerHTML = `
         ${vetoHtml}
         <div class="recipe-detail-header">
@@ -2870,7 +2887,7 @@ function renderRecipeDetailContent(rec) {
                     ${seasonBadge}
                 </div>
             </div>
-            ${scorePillHtml}
+            ${detailRightHeaderHtml}
         </div>
 
         <div class="recipe-detail-grid">

@@ -126,6 +126,44 @@
                     <span id="selected-summary" class="text-muted text-sm">0 ingrédient(s) sélectionné(s)</span>
                 </div>
 
+                <!-- Recipe filters bar for Search view -->
+                <div id="search-recipes-filters" class="recipe-filters-bar" data-filter-scope="search">
+                    <button type="button" class="recipe-filter-pill" data-recipe-filter="glutenFree">
+                        🌾 Sans gluten
+                    </button>
+                    <button type="button" class="recipe-filter-pill" data-recipe-filter="lactoseFree">
+                        🥛 Sans lactose
+                    </button>
+                    <button type="button" class="recipe-filter-pill" data-recipe-filter="vegetarian">
+                        🥗 Végétarien
+                    </button>
+                    <button type="button" class="recipe-filter-pill" data-recipe-filter="vegan">
+                        🌱 Végan
+                    </button>
+
+                    <div class="allergen-dropdown">
+                        <button type="button" class="recipe-filter-pill allergen-dropdown-btn" aria-expanded="false">
+                            ⚠️ Allergènes <span class="allergen-filter-count"></span> ▾
+                        </button>
+                        <div class="allergen-dropdown-menu" style="display: none;">
+                            <div class="allergen-dropdown-header">Exclure les allergènes :</div>
+                            <div class="allergen-checkbox-list"></div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="recipe-filter-pill" data-recipe-filter="inSeasonOnly">
+                        🌿 De saison (100%)
+                    </button>
+
+                    <button type="button" class="recipe-filter-pill" data-recipe-filter="quickOnly">
+                        ⚡ ≤ 20 min
+                    </button>
+
+                    <button type="button" class="recipe-filter-reset" style="display: none;">
+                        ✕ Réinitialiser
+                    </button>
+                </div>
+
                 <div id="recipes-list" class="recipe-cards-container">
                     <div class="empty-state">
                         Sélectionnez vos ingrédients ci-dessus pour découvrir vos recettes.
@@ -153,7 +191,7 @@
             <div id="shared-recipe-notifications" class="shared-notifications-container" style="display: none;"></div>
 
             <!-- Recipe filters bar (shared by My Recipes & Visitor Recipes) -->
-            <div id="my-recipes-filters" class="recipe-filters-bar">
+            <div id="my-recipes-filters" class="recipe-filters-bar" data-filter-scope="myRecipes">
                 <button type="button" class="recipe-filter-pill" data-recipe-filter="glutenFree">
                     🌾 Sans gluten
                 </button>
@@ -167,13 +205,13 @@
                     🌱 Végan
                 </button>
 
-                <div class="allergen-dropdown" id="my-recipes-allergen-dropdown">
-                    <button type="button" class="recipe-filter-pill allergen-dropdown-btn" id="btn-allergen-dropdown" aria-expanded="false">
-                        ⚠️ Allergènes <span id="allergen-filter-count"></span> ▾
+                <div class="allergen-dropdown">
+                    <button type="button" class="recipe-filter-pill allergen-dropdown-btn" aria-expanded="false">
+                        ⚠️ Allergènes <span class="allergen-filter-count"></span> ▾
                     </button>
-                    <div class="allergen-dropdown-menu" id="allergen-dropdown-menu" style="display: none;">
+                    <div class="allergen-dropdown-menu" style="display: none;">
                         <div class="allergen-dropdown-header">Exclure les allergènes :</div>
-                        <div id="allergen-checkbox-list" class="allergen-checkbox-list"></div>
+                        <div class="allergen-checkbox-list"></div>
                     </div>
                 </div>
 
@@ -181,7 +219,11 @@
                     🌿 De saison (100%)
                 </button>
 
-                <button type="button" id="btn-reset-recipe-filters" class="recipe-filter-reset" style="display: none;">
+                <button type="button" class="recipe-filter-pill" data-recipe-filter="quickOnly">
+                    ⚡ ≤ 20 min
+                </button>
+
+                <button type="button" class="recipe-filter-reset" style="display: none;">
                     ✕ Réinitialiser
                 </button>
             </div>

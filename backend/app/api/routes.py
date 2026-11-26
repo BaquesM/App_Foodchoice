@@ -226,33 +226,21 @@ def list_public_recipes(db: Session = Depends(get_db)):
 def list_account_recipes(
     account_id: int,
     profile_ids: list[int] | None = Query(default=None),
+    include_public: bool = Query(default=True),
     db: Session = Depends(get_db),
 ):
-    """Retrieve all personal and directly shared recipes associated with an account."""
+    """Retrieve personal, directly shared, and optionally public recipes for an account."""
     account = db.query(UserAccount).filter_by(id=account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-
-    shared_ids = [
-        s.recipe_id
-        for s in db.query(RecipeShare).filter_by(shared_with_account_id=account_id).all()
-    ]
-    recipes = (
-        db.query(Recipe)
-        .filter((Recipe.account_id == account_id) | (Recipe.id.in_(shared_ids)))
-        .all()
-    )
-
-    if not recipes:
-        return []
 
     return search_and_rank_recipes(
         db=db,
         available_ingredient_ids=[],
         account_id=account_id,
         profile_ids=profile_ids or [],
-        target_recipe_ids=[r.id for r in recipes],
         min_match_score=0.0,
+        include_public=include_public,
     )
 
 

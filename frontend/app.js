@@ -20,6 +20,7 @@ try {
 
 function createEmptyRecipeFilters() {
     return {
+        ownOnly: false,
         glutenFree: false,
         lactoseFree: false,
         vegetarian: false,
@@ -660,6 +661,7 @@ function updateAccountViewUI() {
     const btnGoCreate = document.getElementById("btn-go-to-create");
     const myRecipesSubtitle = document.getElementById("my-recipes-subtitle");
     const myRecipesProfiles = document.getElementById("my-recipes-profiles-selector");
+    const btnOwnOnly = document.getElementById("btn-my-recipes-own-only");
     const groupWhoIsDining = document.getElementById("group-who-is-dining");
     const controlsGrid = document.querySelector(".controls-grid");
     const publicToggleContainer = document.querySelector(".public-toggle-container");
@@ -683,6 +685,7 @@ function updateAccountViewUI() {
         if (controlsGrid) controlsGrid.classList.remove("visitor-mode");
         if (myRecipesSubtitle) myRecipesSubtitle.style.display = "none";
         if (myRecipesProfiles) myRecipesProfiles.style.display = "flex";
+        if (btnOwnOnly) btnOwnOnly.style.display = "";
     } else {
         // Visitor / Guest mode
         if (authVisitor) authVisitor.style.display = "flex";
@@ -701,6 +704,11 @@ function updateAccountViewUI() {
             myRecipesSubtitle.textContent = "Toutes les recettes publiques partagées par la communauté.";
         }
         if (myRecipesProfiles) myRecipesProfiles.style.display = "none";
+        if (btnOwnOnly) {
+            btnOwnOnly.style.display = "none";
+            btnOwnOnly.classList.remove("active");
+            state.recipeFilters.myRecipes.ownOnly = false;
+        }
         if (state.currentView === "view-create-recipe") {
             switchView("view-search");
         }
@@ -941,6 +949,7 @@ function setupAuthListeners() {
                 email,
                 password,
                 options: {
+                    emailRedirectTo: window.location.origin,
                     data: { display_name: name }
                 }
             });
@@ -1155,6 +1164,7 @@ async function loadAccountRecipes() {
  */
 function filterRecipeList(recipes, f) {
     return recipes.filter((r) => {
+        if (f.ownOnly && !r.is_own && !(r.shared_with_ids || []).includes(state.activeAccountId)) return false;
         const allergens = r.allergens || [];
         if (f.glutenFree && allergens.includes("gluten")) return false;
         if (f.lactoseFree && allergens.includes("lait")) return false;
@@ -1223,7 +1233,7 @@ function applyRecipeFilters(scope) {
         if (allergenBtn) allergenBtn.classList.toggle("active", excludedCount > 0);
 
         const hasActiveFilter =
-            f.glutenFree || f.lactoseFree || f.vegetarian || f.vegan ||
+            f.ownOnly || f.glutenFree || f.lactoseFree || f.vegetarian || f.vegan ||
             f.inSeasonOnly || f.quickOnly || excludedCount > 0;
         const resetBtn = bar.querySelector(".recipe-filter-reset");
         if (resetBtn) resetBtn.style.display = hasActiveFilter ? "inline-flex" : "none";
@@ -1314,6 +1324,7 @@ function setupRecipeFilterBarListeners() {
         const resetBtn = bar.querySelector(".recipe-filter-reset");
         if (resetBtn) {
             resetBtn.addEventListener("click", () => {
+                filters.ownOnly = false;
                 filters.glutenFree = false;
                 filters.lactoseFree = false;
                 filters.vegetarian = false;

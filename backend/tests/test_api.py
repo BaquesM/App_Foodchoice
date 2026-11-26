@@ -953,6 +953,22 @@ def test_profile_diet_and_allergen_vetoes():
     assert reset_res.status_code == 200
 
 
+def test_account_recipes_include_public_by_default():
+    """Verify GET /api/accounts/{id}/recipes includes community public recipes by default."""
+    accounts = client.get("/api/accounts").json()
+    curie = next(a for a in accounts if a["username"] == "curie")
+
+    default_titles = {r["title"] for r in client.get(f"/api/accounts/{curie['id']}/recipes").json()}
+    assert "Ratatouille de Newton" in default_titles
+
+    own_only_titles = {
+        r["title"] for r in client.get(f"/api/accounts/{curie['id']}/recipes?include_public=false").json()
+    }
+    assert "Ratatouille de Newton" not in own_only_titles
+    assert "Omelette aux fines herbes" in own_only_titles
+
+
+
 
 
 

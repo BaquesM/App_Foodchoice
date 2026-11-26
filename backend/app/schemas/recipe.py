@@ -112,6 +112,7 @@ class RecipeCreate(BaseModel):
     is_freezable: bool = Field(default=False, description="Whether the recipe can be frozen")
     visibility: str = Field(default="private", pattern="^(private|public)$")
     parent_recipe_id: Optional[int] = Field(default=None, description="Optional ID of original recipe if this is an alternative variation")
+    allergens: list[str] = Field(default_factory=list, description="Optional allergen slugs declared on the recipe")
     ingredients: list[RecipeIngredientCreate] = Field(..., min_length=1)
 
 

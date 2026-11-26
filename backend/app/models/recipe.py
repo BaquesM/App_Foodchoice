@@ -47,6 +47,14 @@ profile_allergens = Table(
     Column("allergen_id", Integer, ForeignKey("allergens.id", ondelete="CASCADE"), primary_key=True),
 )
 
+# Many-to-many link: a recipe can declare 0..n extra allergens manually
+recipe_allergens = Table(
+    "recipe_allergens",
+    Base.metadata,
+    Column("recipe_id", Integer, ForeignKey("recipes.id", ondelete="CASCADE"), primary_key=True),
+    Column("allergen_id", Integer, ForeignKey("allergens.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class UserAccount(Base):
     """User account representing the person who logs in (e.g. Curie, Einstein, Newton)."""
@@ -237,6 +245,12 @@ class Recipe(Base):
     recipe_ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
     shares = relationship("RecipeShare", back_populates="recipe", cascade="all, delete-orphan")
     parent_recipe = relationship("Recipe", remote_side=[id], backref="alternatives")
+    allergen_links = relationship("Allergen", secondary=recipe_allergens)
+
+    @property
+    def allergens(self) -> list[str]:
+        """Return manually declared allergen slugs on this recipe."""
+        return sorted(a.name for a in self.allergen_links)
 
 
 class RecipeShare(Base):

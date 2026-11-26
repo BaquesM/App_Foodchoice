@@ -403,6 +403,8 @@ def create_recipe(payload: RecipeCreate, db: Session = Depends(get_db)):
         visibility=payload.visibility,
         parent_recipe_id=payload.parent_recipe_id,
     )
+    if payload.allergens:
+        new_recipe.allergen_links = db.query(Allergen).filter(Allergen.name.in_(payload.allergens)).all()
     db.add(new_recipe)
     db.flush()
 
@@ -502,6 +504,11 @@ def update_recipe(recipe_id: int, payload: RecipeUpdate, db: Session = Depends(g
     recipe.is_freezable = payload.is_freezable
     recipe.visibility = payload.visibility
     recipe.parent_recipe_id = payload.parent_recipe_id
+    recipe.allergen_links = (
+        db.query(Allergen).filter(Allergen.name.in_(payload.allergens)).all()
+        if payload.allergens
+        else []
+    )
 
     # Remove existing recipe ingredients for this recipe
     db.query(RecipeIngredient).filter_by(recipe_id=recipe.id).delete()

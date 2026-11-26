@@ -88,6 +88,7 @@ def search_and_rank_recipes(
         selectinload(Recipe.author),
         selectinload(Recipe.parent_recipe),
         selectinload(Recipe.alternatives),
+        selectinload(Recipe.allergen_links),
         selectinload(Recipe.shares).selectinload(RecipeShare.shared_with_account),
         selectinload(Recipe.recipe_ingredients)
         .selectinload(RecipeIngredient.ingredient)
@@ -177,7 +178,8 @@ def search_and_rank_recipes(
         all_recipe_ratings = []
         has_veto = False
         veto_reasons = []
-        recipe_allergens: set[str] = set()
+        recipe_allergens: set[str] = set(recipe.allergens)
+        ingredient_allergens_seen: set[str] = set()
         recipe_is_vegetarian = True
         recipe_is_vegan = True
         ingredient_matches: list[IngredientMatch] = []
@@ -187,6 +189,7 @@ def search_and_rank_recipes(
             if not ing:
                 continue
             recipe_allergens.update(ing.allergens)
+            ingredient_allergens_seen.update(ing.allergens)
             if not ing.is_vegetarian:
                 recipe_is_vegetarian = False
             if not ing.is_vegan:
@@ -256,6 +259,16 @@ def search_and_rank_recipes(
                     user_opinions=opinions,
                 )
             )
+
+        # Also check vetoes for recipe-level manual allergens not already covered by an ingredient
+        extra_recipe_allergens = set(recipe.allergens) - ingredient_allergens_seen
+        for pid in profile_ids:
+            p_name = profile_names.get(pid, f"Profil {pid}")
+            p_allergens = profile_allergens_map.get(pid, {})
+            for a_slug in sorted(extra_recipe_allergens):
+                if a_slug in p_allergens:
+                    has_veto = True
+                    veto_reasons.append(f"{p_name} est allergique à {p_allergens[a_slug]} (recette)")
 
         match_score = round((earned_weight / total_weight) * 100, 1) if total_weight > 0 else 0.0
         season_score = (

@@ -320,6 +320,21 @@
                         </button>
                     </div>
 
+                    <!-- Recipe allergens multi-select dropdown -->
+                    <div class="form-group">
+                        <label class="form-label">Allergènes présents dans la recette</label>
+                        <div class="allergen-dropdown" id="create-recipe-allergen-dropdown" style="max-width: 340px;">
+                            <button type="button" class="recipe-filter-pill allergen-dropdown-btn" id="btn-create-allergen-dropdown" aria-expanded="false">
+                                ⚠️ Allergènes de la recette <span id="create-allergen-count"></span> ▾
+                            </button>
+                            <div class="allergen-dropdown-menu" id="create-allergen-dropdown-menu" style="display: none;">
+                                <div class="allergen-dropdown-header">Sélectionner les allergènes :</div>
+                                <div id="create-allergen-checkbox-list" class="allergen-checkbox-list"></div>
+                            </div>
+                        </div>
+                        <p id="create-allergen-detected-hint" class="helper-text" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;"></p>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">Instructions de préparation (par étapes) *</label>
                         <div id="new-recipe-steps-list" class="new-steps-container">

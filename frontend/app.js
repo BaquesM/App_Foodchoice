@@ -48,6 +48,7 @@ const state = {
     selectedIngredientIds: new Set(),
     selectedProfileIds: new Set(),
     myRecipesSelectedProfileIds: new Set(),
+    createRecipeAllergens: new Set(),
     servings: 2,
     includePublic: true,
     filterQuery: "",
@@ -1215,6 +1216,73 @@ function renderAllergenFilterMenus() {
             list.appendChild(label);
         });
     });
+
+    // Also populate the Create / Edit recipe allergens checklist
+    const createList = document.getElementById("create-allergen-checkbox-list");
+    if (createList) {
+        createList.innerHTML = "";
+        state.allAllergens.forEach((allergen) => {
+            const label = document.createElement("label");
+            label.className = "allergen-checkbox-item";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = allergen.name;
+            checkbox.checked = state.createRecipeAllergens.has(allergen.name);
+            checkbox.addEventListener("change", () => {
+                if (checkbox.checked) {
+                    state.createRecipeAllergens.add(allergen.name);
+                } else {
+                    state.createRecipeAllergens.delete(allergen.name);
+                }
+                syncCreateRecipeAllergensUI();
+            });
+
+            const icon = ALLERGEN_ICONS[allergen.name] || "⚠️";
+            const text = document.createElement("span");
+            text.textContent = `${icon} ${allergen.label}`;
+
+            label.appendChild(checkbox);
+            label.appendChild(text);
+            createList.appendChild(label);
+        });
+        syncCreateRecipeAllergensUI();
+    }
+}
+
+/**
+ * Update the Create/Edit recipe allergen dropdown counter and auto-detected ingredient hint.
+ */
+function syncCreateRecipeAllergensUI() {
+    const detected = new Set();
+    document.querySelectorAll("#new-recipe-ingredients-list .ing-name").forEach((inp) => {
+        const val = inp.value.trim().toLowerCase();
+        const matched = state.allIngredients.find((i) => i.name.toLowerCase() === val);
+        if (matched && matched.allergens) {
+            matched.allergens.forEach((a) => detected.add(a));
+        }
+    });
+
+    const combined = new Set([...state.createRecipeAllergens, ...detected]);
+    const countSpan = document.getElementById("create-allergen-count");
+    const btn = document.getElementById("btn-create-allergen-dropdown");
+    if (countSpan) countSpan.textContent = combined.size > 0 ? `(${combined.size})` : "";
+    if (btn) btn.classList.toggle("active", combined.size > 0);
+
+    document.querySelectorAll("#create-allergen-checkbox-list input[type='checkbox']").forEach((cb) => {
+        cb.checked = state.createRecipeAllergens.has(cb.value) || detected.has(cb.value);
+    });
+
+    const hint = document.getElementById("create-allergen-detected-hint");
+    if (hint) {
+        if (detected.size > 0) {
+            const labelMap = new Map(state.allAllergens.map((a) => [a.name, a.label]));
+            const names = Array.from(detected).map((s) => `${ALLERGEN_ICONS[s] || "⚠️"} ${labelMap.get(s) || s}`);
+            hint.textContent = `Détectés automatiquement via vos ingrédients : ${names.join(", ")}`;
+        } else {
+            hint.textContent = "Les allergènes des ingrédients déjà connus sont détectés automatiquement ; cochez-en d'autres si besoin.";
+        }
+    }
 }
 
 /**
@@ -1344,6 +1412,31 @@ function setupRecipeFilterBarListeners() {
             });
         }
     });
+
+    // Create / Edit recipe allergens dropdown open/close
+    const createDropdown = document.getElementById("create-recipe-allergen-dropdown");
+    const createBtn = document.getElementById("btn-create-allergen-dropdown");
+    const createMenu = document.getElementById("create-allergen-dropdown-menu");
+    if (createBtn && createMenu) {
+        createBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = createMenu.style.display !== "none";
+            createMenu.style.display = isOpen ? "none" : "block";
+            createBtn.setAttribute("aria-expanded", String(!isOpen));
+        });
+        document.addEventListener("click", (e) => {
+            if (createDropdown && !createDropdown.contains(e.target) && createMenu.style.display !== "none") {
+                createMenu.style.display = "none";
+                createBtn.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+
+    const ingList = document.getElementById("new-recipe-ingredients-list");
+    if (ingList) {
+        ingList.addEventListener("input", () => syncCreateRecipeAllergensUI());
+        ingList.addEventListener("change", () => syncCreateRecipeAllergensUI());
+    }
 }
 
 /**
@@ -2051,6 +2144,8 @@ function resetRecipeFormToCreateMode() {
         list.innerHTML = "";
         addIngredientRow();
     }
+    state.createRecipeAllergens.clear();
+    syncCreateRecipeAllergensUI();
     const stepsList = document.getElementById("new-recipe-steps-list");
     if (stepsList) {
         stepsList.innerHTML = "";
@@ -2089,6 +2184,7 @@ async function openEditRecipeForm(rec) {
     if (visInput) visInput.value = rec.visibility;
     const freezableInput = document.getElementById("new-recipe-freezable");
     if (freezableInput) freezableInput.value = rec.is_freezable ? "true" : "false";
+    state.createRecipeAllergens = new Set(rec.allergens || []);
     const prepInput = document.getElementById("new-recipe-prep");
     if (prepInput) prepInput.value = rec.prep_time_minutes;
     const cookInput = document.getElementById("new-recipe-cook");
@@ -2127,6 +2223,7 @@ async function openEditRecipeForm(rec) {
             addIngredientRow();
         }
     }
+    syncCreateRecipeAllergensUI();
 
     // Populate instruction steps
     const stepsList = document.getElementById("new-recipe-steps-list");
@@ -2258,6 +2355,7 @@ async function handleCreateRecipeSubmit(e) {
         is_freezable: isFreezable,
         visibility: visibility,
         parent_recipe_id: parentRecipeId,
+        allergens: Array.from(state.createRecipeAllergens),
         ingredients: ingredients
     };
 

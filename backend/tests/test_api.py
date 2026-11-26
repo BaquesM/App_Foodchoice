@@ -968,6 +968,55 @@ def test_account_recipes_include_public_by_default():
     assert "Omelette aux fines herbes" in own_only_titles
 
 
+def test_recipe_manual_allergens():
+    """Verify manually declared recipe allergens are persisted, merged, and trigger guest vetoes."""
+    accounts = client.get("/api/accounts").json()
+    curie = next(a for a in accounts if a["username"] == "curie")
+    profiles = client.get(f"/api/accounts/{curie['id']}/profiles").json()
+    curie_prof = next(p for p in profiles if p["name"] == "Curie")
+
+    payload = {
+        "account_id": curie["id"],
+        "title": "Salade test allergène manuel",
+        "instructions": "Mélanger les courgettes et servir.",
+        "prep_time_minutes": 5,
+        "cook_time_minutes": 0,
+        "base_servings": 2,
+        "visibility": "private",
+        "allergens": ["arachides"],
+        "ingredients": [
+            {"name": "Courgette", "category": "légume", "quantity": 1, "unit": "pièce", "importance": 3}
+        ],
+    }
+    res = client.post("/api/recipes", json=payload)
+    assert res.status_code == 201
+    created = res.json()
+    assert "arachides" in created["allergens"]
+
+    # Set Curie allergic to arachides -> must trigger veto on this recipe
+    client.put(
+        f"/api/profiles/{curie_prof['id']}/diet",
+        json={"is_vegetarian": False, "is_vegan": False, "allergens": ["arachides"]},
+    )
+    recs = client.get(f"/api/accounts/{curie['id']}/recipes?profile_ids={curie_prof['id']}").json()
+    found = next(r for r in recs if r["recipe_id"] == created["recipe_id"])
+    assert found["has_veto"] is True
+    assert any("Arachides" in reason for reason in found["veto_reasons"])
+
+    # Cleanup
+    client.put(
+        f"/api/profiles/{curie_prof['id']}/diet",
+        json={"is_vegetarian": False, "is_vegan": False, "allergens": []},
+    )
+    db = SessionLocal()
+    rec = db.query(Recipe).filter_by(id=created["recipe_id"]).first()
+    if rec:
+        db.delete(rec)
+        db.commit()
+    db.close()
+
+
+
 
 
 

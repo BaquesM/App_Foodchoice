@@ -3,7 +3,7 @@ import json
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,13 @@ def list_household_profiles(account_id: int, db: Session = Depends(get_db)):
     account = db.query(UserAccount).filter_by(id=account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-    return db.query(HouseholdProfile).filter_by(account_id=account_id).order_by(HouseholdProfile.name).all()
+    return (
+        db.query(HouseholdProfile)
+        .options(selectinload(HouseholdProfile.allergen_links))
+        .filter_by(account_id=account_id)
+        .order_by(HouseholdProfile.name)
+        .all()
+    )
 
 
 @router.post("/accounts/{account_id}/profiles", response_model=HouseholdProfileOut, status_code=status.HTTP_201_CREATED)
@@ -253,7 +259,16 @@ def list_account_recipes(
 @router.get("/ingredients", response_model=list[IngredientOut])
 def list_ingredients(db: Session = Depends(get_db)):
     """Retrieve all ingredients sorted by category and name."""
-    return db.query(Ingredient).order_by(Ingredient.category, Ingredient.name).all()
+    return (
+        db.query(Ingredient)
+        .options(
+            selectinload(Ingredient.season),
+            selectinload(Ingredient.diet),
+            selectinload(Ingredient.allergen_links),
+        )
+        .order_by(Ingredient.category, Ingredient.name)
+        .all()
+    )
 
 
 @router.get("/allergens", response_model=list[AllergenOut])

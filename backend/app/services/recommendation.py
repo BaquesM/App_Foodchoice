@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass, field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from backend.app.models.recipe import (
     Recipe,
     RecipeShare,
@@ -83,13 +83,38 @@ def search_and_rank_recipes(
     profile_ids = profile_ids or []
     available_set = set(available_ingredient_ids)
 
+    # Eager-load related tables in bulk to avoid N+1 queries against PostgreSQL/Supabase
+    recipe_load_options = (
+        selectinload(Recipe.author),
+        selectinload(Recipe.parent_recipe),
+        selectinload(Recipe.alternatives),
+        selectinload(Recipe.shares).selectinload(RecipeShare.shared_with_account),
+        selectinload(Recipe.recipe_ingredients)
+        .selectinload(RecipeIngredient.ingredient)
+        .options(
+            selectinload(Ingredient.season),
+            selectinload(Ingredient.diet),
+            selectinload(Ingredient.allergen_links),
+        ),
+    )
+
     # 1. Determine accessible recipes
     if target_recipe_ids is not None:
         # Explicit target recipe list (e.g. accessed via unique share token)
-        candidate_recipes = db.query(Recipe).filter(Recipe.id.in_(target_recipe_ids)).all()
+        candidate_recipes = (
+            db.query(Recipe)
+            .options(*recipe_load_options)
+            .filter(Recipe.id.in_(target_recipe_ids))
+            .all()
+        )
     elif account_id is None:
         # Anonymous guest: only public recipes are accessible
-        candidate_recipes = db.query(Recipe).filter(Recipe.visibility == "public").all()
+        candidate_recipes = (
+            db.query(Recipe)
+            .options(*recipe_load_options)
+            .filter(Recipe.visibility == "public")
+            .all()
+        )
         # Guests have no private household profiles to evaluate
         profile_ids = []
     else:
@@ -106,7 +131,12 @@ def search_and_rank_recipes(
         if include_public:
             conditions = conditions | (Recipe.visibility == "public")
 
-        candidate_recipes = db.query(Recipe).filter(conditions).all()
+        candidate_recipes = (
+            db.query(Recipe)
+            .options(*recipe_load_options)
+            .filter(conditions)
+            .all()
+        )
 
     # 2. Fetch household profile opinions, diets and allergens (only from profiles belonging to this search)
     profile_prefs_map = {}  # {profile_id: {ingredient_id: rating}}
@@ -114,7 +144,12 @@ def search_and_rank_recipes(
     profile_diets = {}      # {profile_id: (is_vegetarian, is_vegan)}
     profile_allergens_map = {}  # {profile_id: {allergen_slug: label}}
     if profile_ids:
-        profiles = db.query(HouseholdProfile).filter(HouseholdProfile.id.in_(profile_ids)).all()
+        profiles = (
+            db.query(HouseholdProfile)
+            .options(selectinload(HouseholdProfile.allergen_links))
+            .filter(HouseholdProfile.id.in_(profile_ids))
+            .all()
+        )
         for p in profiles:
             profile_names[p.id] = p.name
             profile_prefs_map[p.id] = {}

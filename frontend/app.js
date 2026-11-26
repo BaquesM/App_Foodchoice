@@ -523,6 +523,8 @@ function updateAccountViewUI() {
     const myRecipesSubtitle = document.getElementById("my-recipes-subtitle");
     const groupWhoIsDining = document.getElementById("group-who-is-dining");
     const controlsGrid = document.querySelector(".controls-grid");
+    const publicToggleContainer = document.querySelector(".public-toggle-container");
+    const toggleIncludePublic = document.getElementById("toggle-include-public");
 
     const authVisitor = document.getElementById("auth-state-visitor");
     const authLogged = document.getElementById("auth-state-logged");
@@ -538,6 +540,7 @@ function updateAccountViewUI() {
         if (tabCreateRecipe) tabCreateRecipe.style.display = "";
         if (btnGoCreate) btnGoCreate.style.display = "";
         if (groupWhoIsDining) groupWhoIsDining.style.display = "";
+        if (publicToggleContainer) publicToggleContainer.style.display = "";
         if (controlsGrid) controlsGrid.classList.remove("visitor-mode");
         if (myRecipesSubtitle) {
             myRecipesSubtitle.textContent = `Toutes les recettes privées et partagées associées au compte de ${state.currentUser.display_name}.`;
@@ -551,6 +554,9 @@ function updateAccountViewUI() {
         if (tabCreateRecipe) tabCreateRecipe.style.display = "none";
         if (btnGoCreate) btnGoCreate.style.display = "none";
         if (groupWhoIsDining) groupWhoIsDining.style.display = "none";
+        if (publicToggleContainer) publicToggleContainer.style.display = "none";
+        state.includePublic = true;
+        if (toggleIncludePublic) toggleIncludePublic.checked = true;
         if (controlsGrid) controlsGrid.classList.add("visitor-mode");
         if (myRecipesSubtitle) {
             myRecipesSubtitle.textContent = "Toutes les recettes publiques partagées par la communauté.";

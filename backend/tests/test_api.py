@@ -860,5 +860,25 @@ def test_allergens_endpoint_and_recipe_diet_fields():
     assert "lait" in carbo["allergens"]
 
 
+def test_account_recipes_veto_only_when_profile_selected():
+    """Verify GET /api/accounts/{id}/recipes returns vetoes only when profile_ids are passed."""
+    accounts = client.get("/api/accounts").json()
+    curie = next(a for a in accounts if a["username"] == "curie")
+    profiles = client.get(f"/api/accounts/{curie['id']}/profiles").json()
+    thomas = next(p for p in profiles if p["name"] == "Thomas")
+
+    # Without selected guest -> no veto on Salade Tomate Mozzarella
+    without_guest = client.get(f"/api/accounts/{curie['id']}/recipes").json()
+    salade_no_guest = next(r for r in without_guest if r["title"] == "Salade Tomate Mozzarella")
+    assert salade_no_guest["has_veto"] is False
+
+    # With Thomas selected -> veto triggered for Tomate
+    with_thomas = client.get(f"/api/accounts/{curie['id']}/recipes?profile_ids={thomas['id']}").json()
+    salade_thomas = next(r for r in with_thomas if r["title"] == "Salade Tomate Mozzarella")
+    assert salade_thomas["has_veto"] is True
+    assert any("Thomas déteste Tomate" in reason for reason in salade_thomas["veto_reasons"])
+
+
+
 
 

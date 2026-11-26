@@ -46,6 +46,7 @@ const state = {
     currentProfiles: [],
     selectedIngredientIds: new Set(),
     selectedProfileIds: new Set(),
+    myRecipesSelectedProfileIds: new Set(),
     servings: 2,
     includePublic: true,
     filterQuery: "",
@@ -195,6 +196,7 @@ function renderAccountDropdown() {
  */
 async function loadHouseholdProfiles(accountId) {
     state.selectedProfileIds.clear();
+    state.myRecipesSelectedProfileIds.clear();
     const container = document.getElementById("profiles-selector");
 
     if (!accountId) {
@@ -202,6 +204,7 @@ async function loadHouseholdProfiles(accountId) {
         if (container) {
             container.innerHTML = `<span class="text-muted text-sm">Mode invité : aucun profil de foyer (recherche neutre sans avis).</span>`;
         }
+        renderMyRecipesProfiles();
         return;
     }
 
@@ -276,6 +279,53 @@ function renderProfiles() {
         openAddProfileModal();
     });
     container.appendChild(btnAddProfile);
+
+    renderMyRecipesProfiles();
+}
+
+/**
+ * Render selectable guest pills in My Recipes header so vetoes only show for selected guests.
+ */
+function renderMyRecipesProfiles() {
+    const container = document.getElementById("my-recipes-profiles-selector");
+    if (!container) return;
+
+    container.innerHTML = "";
+    if (!state.activeAccountId || state.currentProfiles.length === 0) return;
+
+    state.currentProfiles.forEach((profile) => {
+        const group = document.createElement("div");
+        group.className = `chip-profile-group ${state.myRecipesSelectedProfileIds.has(profile.id) ? "active" : ""}`;
+
+        const nameBtn = document.createElement("button");
+        nameBtn.type = "button";
+        nameBtn.className = "chip-profile-name";
+        nameBtn.textContent = profile.name;
+        nameBtn.title = `Cliquer pour afficher les vétos de ${profile.name} sur vos recettes`;
+        nameBtn.addEventListener("click", () => {
+            if (state.myRecipesSelectedProfileIds.has(profile.id)) {
+                state.myRecipesSelectedProfileIds.delete(profile.id);
+            } else {
+                state.myRecipesSelectedProfileIds.add(profile.id);
+            }
+            group.classList.toggle("active", state.myRecipesSelectedProfileIds.has(profile.id));
+            loadAccountRecipes();
+        });
+
+        const prefsBtn = document.createElement("button");
+        prefsBtn.type = "button";
+        prefsBtn.className = "btn-chip-prefs";
+        prefsBtn.textContent = "⚙️";
+        prefsBtn.title = `Gérer les goûts et vetos de ${profile.name}`;
+        prefsBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openPreferencesModal(profile);
+        });
+
+        group.appendChild(nameBtn);
+        group.appendChild(prefsBtn);
+        container.appendChild(group);
+    });
 }
 
 /**
@@ -530,6 +580,7 @@ function updateAccountViewUI() {
     const tabCreateRecipe = document.getElementById("tab-create-recipe");
     const btnGoCreate = document.getElementById("btn-go-to-create");
     const myRecipesSubtitle = document.getElementById("my-recipes-subtitle");
+    const myRecipesProfiles = document.getElementById("my-recipes-profiles-selector");
     const groupWhoIsDining = document.getElementById("group-who-is-dining");
     const controlsGrid = document.querySelector(".controls-grid");
     const publicToggleContainer = document.querySelector(".public-toggle-container");
@@ -551,9 +602,8 @@ function updateAccountViewUI() {
         if (groupWhoIsDining) groupWhoIsDining.style.display = "";
         if (publicToggleContainer) publicToggleContainer.style.display = "";
         if (controlsGrid) controlsGrid.classList.remove("visitor-mode");
-        if (myRecipesSubtitle) {
-            myRecipesSubtitle.textContent = `Toutes les recettes privées et partagées associées au compte de ${state.currentUser.display_name}.`;
-        }
+        if (myRecipesSubtitle) myRecipesSubtitle.style.display = "none";
+        if (myRecipesProfiles) myRecipesProfiles.style.display = "flex";
     } else {
         // Visitor / Guest mode
         if (authVisitor) authVisitor.style.display = "flex";
@@ -568,8 +618,10 @@ function updateAccountViewUI() {
         if (toggleIncludePublic) toggleIncludePublic.checked = true;
         if (controlsGrid) controlsGrid.classList.add("visitor-mode");
         if (myRecipesSubtitle) {
+            myRecipesSubtitle.style.display = "";
             myRecipesSubtitle.textContent = "Toutes les recettes publiques partagées par la communauté.";
         }
+        if (myRecipesProfiles) myRecipesProfiles.style.display = "none";
         if (state.currentView === "view-create-recipe") {
             switchView("view-search");
         }
@@ -1000,16 +1052,13 @@ async function loadAccountRecipes() {
         return;
     }
 
-    const currentAcc = state.allAccounts.find(a => a.id === state.activeAccountId);
-    const accName = currentAcc ? currentAcc.display_name : "votre compte";
-    if (subtitle) {
-        subtitle.textContent = `Toutes les recettes privées et partagées associées au compte de ${accName}.`;
-    }
-
     container.innerHTML = `<div class="loading-state">Chargement de vos recettes...</div>`;
 
     try {
-        const res = await fetch(`/api/accounts/${state.activeAccountId}/recipes`);
+        const params = new URLSearchParams();
+        state.myRecipesSelectedProfileIds.forEach((pid) => params.append("profile_ids", pid));
+        const qs = params.toString() ? `?${params.toString()}` : "";
+        const res = await fetch(`/api/accounts/${state.activeAccountId}/recipes${qs}`);
         if (res.ok) {
             state.accountRecipes = await res.json();
             applyRecipeFilters("myRecipes");

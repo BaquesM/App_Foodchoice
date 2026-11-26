@@ -1,7 +1,7 @@
 """REST API route handlers for accounts, recipes, ingredients, and sharing."""
 import json
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -196,7 +196,11 @@ def list_public_recipes(db: Session = Depends(get_db)):
 
 
 @router.get("/accounts/{account_id}/recipes", response_model=list[RecipeRecommendationOut])
-def list_account_recipes(account_id: int, db: Session = Depends(get_db)):
+def list_account_recipes(
+    account_id: int,
+    profile_ids: list[int] | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
     """Retrieve all personal and directly shared recipes associated with an account."""
     account = db.query(UserAccount).filter_by(id=account_id).first()
     if not account:
@@ -219,6 +223,7 @@ def list_account_recipes(account_id: int, db: Session = Depends(get_db)):
         db=db,
         available_ingredient_ids=[],
         account_id=account_id,
+        profile_ids=profile_ids or [],
         target_recipe_ids=[r.id for r in recipes],
         min_match_score=0.0,
     )

@@ -108,14 +108,18 @@ def search_and_rank_recipes(
 
         candidate_recipes = db.query(Recipe).filter(conditions).all()
 
-    # 2. Fetch household profile opinions (only from profiles belonging to this search)
+    # 2. Fetch household profile opinions, diets and allergens (only from profiles belonging to this search)
     profile_prefs_map = {}  # {profile_id: {ingredient_id: rating}}
     profile_names = {}
+    profile_diets = {}      # {profile_id: (is_vegetarian, is_vegan)}
+    profile_allergens_map = {}  # {profile_id: {allergen_slug: label}}
     if profile_ids:
         profiles = db.query(HouseholdProfile).filter(HouseholdProfile.id.in_(profile_ids)).all()
         for p in profiles:
             profile_names[p.id] = p.name
             profile_prefs_map[p.id] = {}
+            profile_diets[p.id] = (bool(p.is_vegetarian), bool(p.is_vegan))
+            profile_allergens_map[p.id] = {a.name: a.label for a in p.allergen_links}
 
         prefs = (
             db.query(UserIngredientPreference)
@@ -182,11 +186,27 @@ def search_and_rank_recipes(
             else:
                 status = "missing"
 
-            # Veto check: someone gave -2 to an ingredient of the recipe
+            # Veto check: someone gave -2 to an ingredient, or has a diet/allergen conflict
             for pid, rating in disliked_by_profiles:
                 if rating == -2:
                     has_veto = True
                     veto_reasons.append(f"{profile_names.get(pid)} déteste {ing.name}")
+
+            for pid in profile_ids:
+                p_name = profile_names.get(pid, f"Profil {pid}")
+                p_veg, p_vegan = profile_diets.get(pid, (False, False))
+                if p_vegan and not ing.is_vegan:
+                    has_veto = True
+                    veto_reasons.append(f"{p_name} est végan ({ing.name})")
+                elif p_veg and not ing.is_vegetarian:
+                    has_veto = True
+                    veto_reasons.append(f"{p_name} est végétarien ({ing.name})")
+
+                p_allergens = profile_allergens_map.get(pid, {})
+                for a_slug in ing.allergens:
+                    if a_slug in p_allergens:
+                        has_veto = True
+                        veto_reasons.append(f"{p_name} est allergique à {p_allergens[a_slug]} ({ing.name})")
 
             ingredient_matches.append(
                 IngredientMatch(
@@ -249,7 +269,7 @@ def search_and_rank_recipes(
                 seasonality_score=season_score,
                 preference_score=pref_score,
                 has_veto=has_veto,
-                veto_reasons=veto_reasons,
+                veto_reasons=list(dict.fromkeys(veto_reasons)),
                 allergens=sorted(recipe_allergens),
                 is_vegetarian=recipe_is_vegetarian,
                 is_vegan=recipe_is_vegan,

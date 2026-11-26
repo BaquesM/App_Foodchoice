@@ -916,6 +916,44 @@ def test_recipe_freezable_flag():
     db.close()
 
 
+def test_profile_diet_and_allergen_vetoes():
+    """Verify PUT /api/profiles/{id}/diet saves diets/allergens and triggers automatic recipe vetoes."""
+    accounts = client.get("/api/accounts").json()
+    curie = next(a for a in accounts if a["username"] == "curie")
+    profiles = client.get(f"/api/accounts/{curie['id']}/profiles").json()
+    curie_prof = next(p for p in profiles if p["name"] == "Curie")
+
+    # Set Curie profile to vegetarian + allergic to gluten
+    upd = client.put(
+        f"/api/profiles/{curie_prof['id']}/diet",
+        json={"is_vegetarian": True, "is_vegan": False, "allergens": ["gluten"]},
+    )
+    assert upd.status_code == 200
+    data = upd.json()
+    assert data["is_vegetarian"] is True
+    assert data["is_vegan"] is False
+    assert data["allergens"] == ["gluten"]
+
+    # Check veto on Pâtes Carbonara (has Lardons + Pâtes/gluten)
+    recs = client.get(f"/api/accounts/{curie['id']}/recipes?profile_ids={curie_prof['id']}").json()
+    carbo = next(r for r in recs if r["title"] == "Pâtes Carbonara")
+    assert carbo["has_veto"] is True
+    assert any("Curie est végétarien (Lardons)" in r for r in carbo["veto_reasons"])
+    assert any("Curie est allergique à Gluten (Pâtes)" in r for r in carbo["veto_reasons"])
+
+    # Omelette aux fines herbes is vegetarian and gluten-free -> no veto
+    omelette = next(r for r in recs if r["title"] == "Omelette aux fines herbes")
+    assert omelette["has_veto"] is False
+
+    # Reset profile diet back to defaults
+    reset_res = client.put(
+        f"/api/profiles/{curie_prof['id']}/diet",
+        json={"is_vegetarian": False, "is_vegan": False, "allergens": []},
+    )
+    assert reset_res.status_code == 200
+
+
+
 
 
 

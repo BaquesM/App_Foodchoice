@@ -25,6 +25,7 @@ from backend.app.schemas.recipe import (
     UserAccountOut,
     HouseholdProfileCreate,
     HouseholdProfileOut,
+    ProfileDietUpdate,
     ProfilePreferenceItemOut,
     PreferenceIn,
     PreferenceOut,
@@ -152,6 +153,26 @@ def delete_household_profile(profile_id: int, db: Session = Depends(get_db)):
     db.delete(profile)
     db.commit()
     return {"message": f"Convive '{profile_name}' supprimé avec succès."}
+
+
+@router.put("/profiles/{profile_id}/diet", response_model=HouseholdProfileOut)
+def update_profile_diet(profile_id: int, payload: ProfileDietUpdate, db: Session = Depends(get_db)):
+    """Update a household profile's vegetarian/vegan flags and avoided allergens."""
+    profile = db.query(HouseholdProfile).filter_by(id=profile_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profil de convive introuvable.")
+
+    profile.is_vegetarian = bool(payload.is_vegetarian)
+    profile.is_vegan = bool(payload.is_vegan)
+    allergens = (
+        db.query(Allergen).filter(Allergen.name.in_(payload.allergens)).all()
+        if payload.allergens
+        else []
+    )
+    profile.allergen_links = allergens
+    db.commit()
+    db.refresh(profile)
+    return profile
 
 
 @router.get("/profiles/{profile_id}/preferences", response_model=list[ProfilePreferenceItemOut])

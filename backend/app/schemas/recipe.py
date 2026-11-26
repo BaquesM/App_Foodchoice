@@ -54,6 +54,16 @@ class HouseholdProfileOut(BaseModel):
     id: int
     account_id: int
     name: str
+    is_vegetarian: bool = False
+    is_vegan: bool = False
+    allergens: list[str] = Field(default_factory=list)
+
+
+class ProfileDietUpdate(BaseModel):
+    """Payload to update a household profile's diets and avoided allergens."""
+    is_vegetarian: bool = False
+    is_vegan: bool = False
+    allergens: list[str] = Field(default_factory=list)
 
 
 class ProfilePreferenceItemOut(BaseModel):

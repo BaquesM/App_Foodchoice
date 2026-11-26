@@ -379,7 +379,86 @@ async function openPreferencesModal(profile) {
         console.error("Failed to load profile preferences:", err);
     }
 
+    renderProfileDietAndAllergens();
     renderPreferencesList();
+}
+
+/**
+ * Render vegetarian, vegan and allergen toggle pills for activePreferencesProfile.
+ */
+function renderProfileDietAndAllergens() {
+    const dietContainer = document.getElementById("prefs-diet-pills");
+    const allergenContainer = document.getElementById("prefs-allergen-pills");
+    if (!dietContainer || !allergenContainer || !activePreferencesProfile) return;
+
+    const profile = activePreferencesProfile;
+    const currentAllergens = new Set(profile.allergens || []);
+
+    async function saveProfileDiet(nextVeg, nextVegan, nextAllergensSet) {
+        const payload = {
+            is_vegetarian: nextVeg,
+            is_vegan: nextVegan,
+            allergens: Array.from(nextAllergensSet),
+        };
+        try {
+            const res = await fetch(`/api/profiles/${profile.id}/diet`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                profile.is_vegetarian = updated.is_vegetarian;
+                profile.is_vegan = updated.is_vegan;
+                profile.allergens = updated.allergens || [];
+                const idx = state.currentProfiles.findIndex((p) => p.id === profile.id);
+                if (idx !== -1) state.currentProfiles[idx] = { ...state.currentProfiles[idx], ...updated };
+                renderProfileDietAndAllergens();
+                if (state.currentView === "view-search" && state.selectedProfileIds.has(profile.id)) {
+                    triggerSearch();
+                } else if (state.currentView === "view-my-recipes" && state.myRecipesSelectedProfileIds.has(profile.id)) {
+                    loadAccountRecipes();
+                }
+            }
+        } catch (err) {
+            console.error("Failed to update profile diet/allergens:", err);
+            showToast("Erreur lors de la sauvegarde du régime.");
+        }
+    }
+
+    dietContainer.innerHTML = "";
+    [
+        { key: "is_vegetarian", label: "🥗 Végétarien", active: Boolean(profile.is_vegetarian) },
+        { key: "is_vegan", label: "🌱 Végan", active: Boolean(profile.is_vegan) },
+    ].forEach((item) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `pref-toggle-pill pref-toggle-diet ${item.active ? "active" : ""}`;
+        btn.textContent = item.label;
+        btn.addEventListener("click", () => {
+            const nextVeg = item.key === "is_vegetarian" ? !profile.is_vegetarian : Boolean(profile.is_vegetarian);
+            const nextVegan = item.key === "is_vegan" ? !profile.is_vegan : Boolean(profile.is_vegan);
+            saveProfileDiet(nextVeg, nextVegan, currentAllergens);
+        });
+        dietContainer.appendChild(btn);
+    });
+
+    allergenContainer.innerHTML = "";
+    state.allAllergens.forEach((a) => {
+        const isActive = currentAllergens.has(a.name);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `pref-toggle-pill pref-toggle-allergen ${isActive ? "active" : ""}`;
+        const icon = ALLERGEN_ICONS[a.name] || "⚠️";
+        btn.textContent = `${icon} ${a.label}`;
+        btn.addEventListener("click", () => {
+            const nextSet = new Set(currentAllergens);
+            if (nextSet.has(a.name)) nextSet.delete(a.name);
+            else nextSet.add(a.name);
+            saveProfileDiet(Boolean(profile.is_vegetarian), Boolean(profile.is_vegan), nextSet);
+        });
+        allergenContainer.appendChild(btn);
+    });
 }
 
 /**

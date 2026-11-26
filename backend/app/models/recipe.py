@@ -39,6 +39,14 @@ ingredient_allergens = Table(
     Column("allergen_id", Integer, ForeignKey("allergens.id", ondelete="CASCADE"), primary_key=True),
 )
 
+# Many-to-many link: a household profile has 0..n allergens
+profile_allergens = Table(
+    "profile_allergens",
+    Base.metadata,
+    Column("profile_id", Integer, ForeignKey("household_profiles.id", ondelete="CASCADE"), primary_key=True),
+    Column("allergen_id", Integer, ForeignKey("allergens.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class UserAccount(Base):
     """User account representing the person who logs in (e.g. Curie, Einstein, Newton)."""
@@ -63,9 +71,17 @@ class HouseholdProfile(Base):
     id = Column(Integer, primary_key=True, index=True)
     account_id = Column(Integer, ForeignKey("user_accounts.id"), nullable=False)
     name = Column(String(100), nullable=False)
+    is_vegetarian = Column(Boolean, default=False, nullable=False)
+    is_vegan = Column(Boolean, default=False, nullable=False)
 
     account = relationship("UserAccount", back_populates="household_profiles")
     preferences = relationship("UserIngredientPreference", back_populates="profile", cascade="all, delete-orphan")
+    allergen_links = relationship("Allergen", secondary=profile_allergens)
+
+    @property
+    def allergens(self) -> list[str]:
+        """Return the names of the allergens avoided by this profile."""
+        return sorted(a.name for a in self.allergen_links)
 
     __table_args__ = (
         UniqueConstraint("account_id", "name", name="unique_account_profile_name"),

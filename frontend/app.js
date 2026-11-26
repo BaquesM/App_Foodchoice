@@ -68,6 +68,30 @@ async function initApp() {
     setupViewNavigation();
     await initAuthSession();
     renderSeasonCalendar();
+    await handleSharedRecipeLink();
+}
+
+/**
+ * If the URL contains ?share=<token>, fetch that shared recipe and open its detail view.
+ */
+async function handleSharedRecipeLink() {
+    const params = new URLSearchParams(window.location.search);
+    const shareToken = params.get("share");
+    if (!shareToken) return;
+
+    try {
+        const res = await fetch(`/api/recipes/shared/${encodeURIComponent(shareToken)}`);
+        if (!res.ok) {
+            showToast("Lien de partage introuvable ou expiré.");
+            return;
+        }
+        const rec = await res.json();
+        state.loadedRecipesMap.set(rec.recipe_id, rec);
+        openRecipeDetailPage(rec);
+    } catch (error) {
+        console.error("Failed to load shared recipe link:", error);
+        showToast("Impossible de charger la recette partagée.");
+    }
 }
 
 /**
@@ -2484,7 +2508,7 @@ function attachCardActionListeners(containerId) {
     parent.querySelectorAll(".btn-copy-link").forEach((btn) => {
         btn.addEventListener("click", () => {
             const token = btn.getAttribute("data-token");
-            const shareUrl = `${window.location.origin}/api/recipes/shared/${token}`;
+            const shareUrl = `${window.location.origin}/?share=${encodeURIComponent(token)}`;
             navigator.clipboard.writeText(shareUrl).then(() => {
                 showToast("Lien de partage copié dans le presse-papier !");
             }).catch(() => {

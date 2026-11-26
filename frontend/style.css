@@ -2201,20 +2201,16 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.65rem;
-    height: 1.65rem;
-    font-size: 0.9rem;
-    background-color: #fee2e2;
-    border: 1px solid #fca5a5;
-    border-radius: var(--radius-full);
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.1rem;
     cursor: default;
     user-select: none;
-    transition: transform 0.12s ease, border-color 0.12s ease;
+    transition: transform 0.12s ease;
 }
 
 .allergen-icon-badge:hover {
-    transform: translateY(-1px);
-    border-color: #ef4444;
+    transform: scale(1.15);
 }
 
 .allergen-icon-badge::after {
